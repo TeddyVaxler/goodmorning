@@ -1,58 +1,57 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Coffee } from 'lucide-react';
+import { Sun } from 'lucide-react';
+import { Montserrat } from 'next/font/google';
+import Link from 'next/link';
+
+const montserrat = Montserrat({ subsets: ['latin'] });
 
 export default function BossJokePage() {
   const [faces, setFaces] = useState<Array<{ id: number; startX: number; startY: number }>>([]);
   const [clickCount, setClickCount] = useState(0);
 
-  const triggerGoodMorning = () => {
-    // Spawns 20 dancing faces per click
+  // useCallback prevents unnecessary re-renders when spam-clicking
+  const triggerGoodMorning = useCallback(() => {
     const newFaces = Array.from({ length: 20 }).map(() => ({
       id: Math.random(),
       startX: Math.random() * 100, 
       startY: Math.random() * 100, 
     }));
-    setFaces((prev) => [...prev, ...newFaces]);
+    
+    // Performance Fix: Capping the DOM at 60 faces max to prevent browser crashes
+    setFaces((prev) => [...prev, ...newFaces].slice(-60));
     setClickCount((prev) => prev + 1);
-  };
+  }, []);
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-slate-50 to-blue-100 overflow-hidden flex flex-col items-center justify-center selection:bg-amber-300">
+    <main className={`relative min-h-screen w-full bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} overflow-hidden flex flex-col items-center justify-center p-4 selection:bg-[#F9CB66] selection:text-[#1A2E35]`}>
       
-      {/* Main UI Container */}
-      <div className="z-10 flex flex-col items-center gap-6 p-10 bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 max-w-lg w-full mx-4">
-        <div className="bg-amber-100 p-4 rounded-full">
-          <Coffee className="w-10 h-10 text-amber-700" />
-        </div>
-        
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">
-            The Daily Standup
-          </h1>
-          <p className="text-lg text-slate-600">
-            Wait for it... the boss just logged on.
-          </p>
-        </div>
+      <div className="z-10 flex flex-col items-center justify-center gap-4 p-6 sm:p-8 bg-white border-2 border-[#1A2E35] w-[95%] sm:w-fit max-w-lg text-center shadow-[4px_4px_0px_0px_#1A2E35]">
         
         <button 
           onClick={triggerGoodMorning}
-          className="group relative inline-flex items-center gap-3 px-10 py-5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-full text-2xl transition-all shadow-[0_8px_0_0_#b45309] hover:shadow-[0_4px_0_0_#b45309] hover:translate-y-1 active:shadow-none active:translate-y-2"
+          className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 sm:py-5 bg-[#006b5b] hover:bg-[#F9CB66] text-[#ffffff] hover:text-[#1A2E35] font-bold border-2 border-[#1A2E35] text-lg sm:text-xl transition-colors cursor-pointer active:bg-[#9FD085] shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full sm:w-auto"
         >
-          <Sun className="w-8 h-8 group-hover:animate-spin" />
+          <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] group-hover:text-[#1A2E35] group-hover:rotate-45 transition-transform shrink-0" />
           "Good Morning!"
         </button>
 
         {clickCount > 0 && (
-          <div className="mt-4 px-4 py-2 bg-slate-800 text-amber-400 rounded-full text-sm font-bold animate-pulse">
-            Boss presence intensity: {clickCount * 20}x
+          <div className="mt-2 px-3 py-2 bg-[#F9CB66] text-[#1A2E35] border border-[#1A2E35] text-xs font-bold tracking-wide w-full sm:w-auto">
+            INTENSITY: <span className="text-[#006b5b] font-extrabold">{clickCount * 20}x</span>
           </div>
         )}
+
+        <Link 
+          href="/game"
+          className="mt-2 text-xs font-black tracking-widest text-[#006b5b] hover:text-[#1A2E35] hover:bg-[#F9CB66] px-3 py-2 border-2 border-transparent hover:border-[#1A2E35] transition-all touch-manipulation"
+        >
+          PLAY THE CLICKER GAME ➔
+        </Link>
       </div>
 
-      {/* Dancing Faces Layer */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
         {faces.map((face) => (
           <DancingBossFace key={face.id} startX={face.startX} startY={face.startY} />
@@ -62,20 +61,14 @@ export default function BossJokePage() {
   );
 }
 
-function DancingBossFace({ startX, startY }: { startX: number; startY: number }) {
-  // Randomize animation paths so no two heads move exactly the same way
+function DancingBossFace({ startX, startY }: { startX: number; startY: number }): JSX.Element {
   const randomDuration = 3 + Math.random() * 4;
   const targetX = startX + (Math.random() * 60 - 30);
   const targetY = startY + (Math.random() * 60 - 30);
 
   return (
     <motion.div
-      initial={{ 
-        x: `${startX}vw`, 
-        y: `120vh`, 
-        scale: 0,
-        opacity: 0
-      }}
+      initial={{ x: `${startX}vw`, y: `120vh`, scale: 0, opacity: 0 }}
       animate={{ 
         x: [`${startX}vw`, `${targetX}vw`, `${startX}vw`],
         y: [`120vh`, `${targetY}vh`, `-20vh`],
@@ -83,28 +76,12 @@ function DancingBossFace({ startX, startY }: { startX: number; startY: number })
         scale: [0, 1.2, 1, 1.5, 1],
         opacity: [0, 1, 1, 1, 0]
       }}
-      transition={{ 
-        duration: randomDuration, 
-        ease: "easeInOut",
-        times: [0, 0.3, 0.6, 0.8, 1],
-        repeat: Infinity,
-        repeatType: "mirror"
-      }}
-      className="absolute w-24 h-24 sm:w-32 sm:h-32 drop-shadow-2xl"
+      transition={{ duration: randomDuration, ease: "easeInOut", times: [0, 0.3, 0.6, 0.8, 1], repeat: Infinity, repeatType: "mirror" }}
+      // Performance Fix: will-change-transform delegates animation calculation to the GPU
+      className="absolute top-0 left-0 w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 flex items-center justify-center drop-shadow-xl will-change-transform"
     >
-      {/* 
-        ASSET PLACEHOLDER: 
-        The image looks for `/goodmorning.png` in your public folder.
-        If it fails to load, it falls back to an SVG emoji placeholder automatically. 
-      */}
-      <img 
-        src="/goodmorning.png" 
-        alt="Good Morning Face"
-        className="w-full h-full object-cover rounded-full border-4 border-amber-400 bg-slate-200"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%23fbbf24"/><text x="50" y="55" font-size="50" text-anchor="middle" dominant-baseline="middle">😎</text></svg>';
-        }}
-      />
+      {/* Performance Fix: Added decoding="async" so image loading doesn't block UI thread */}
+      <img src="/goodmorning.png" alt="Good Morning" className="w-full h-full object-contain" decoding="async" />
     </motion.div>
   );
 }
