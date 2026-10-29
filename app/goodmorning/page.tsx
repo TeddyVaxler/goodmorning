@@ -21,7 +21,7 @@ export default function BossJokePage() {
     }));
     
     // Performance Fix: Capping the DOM at 60 faces max to prevent browser crashes
-    setFaces((prev) => [...prev, ...newFaces].slice(-60));
+    setFaces((prev) => [...prev, ...newFaces].slice(-100));
     setClickCount((prev) => prev + 1);
   }, []);
 
