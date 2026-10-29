@@ -45,7 +45,7 @@ export default function BossJokePage() {
         )}
 
         <Link 
-          href="/game"
+          href="goodmorning/game"
           className="mt-2 text-xs font-black tracking-widest text-[#006b5b] hover:text-[#1A2E35] hover:bg-[#F9CB66] px-3 py-2 border-2 border-transparent hover:border-[#1A2E35] transition-all touch-manipulation"
         >
           PLAY THE CLICKER GAME ➔

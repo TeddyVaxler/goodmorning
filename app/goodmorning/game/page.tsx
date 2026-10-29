@@ -89,7 +89,7 @@ export default function GoodMorningClicker() {
       <div className="flex-1 flex flex-col items-center justify-between border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative min-h-[50vh] lg:min-h-0">
         
         <div className="w-full flex justify-start mb-2">
-          <Link href="/" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-2 py-1">
+          <Link href="/goodmorning" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-2 py-1">
             <ArrowLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
           </Link>
         </div>
