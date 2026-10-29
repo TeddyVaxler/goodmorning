@@ -82,22 +82,19 @@ export default function GoodMorningClicker() {
   }, []);
 
   const buyUpgrade = useCallback((id: string, baseCost: number) => {
-    setInventory((prev) => {
-      const currentCount = prev[id];
-      const cost = Math.floor(baseCost * Math.pow(1.15, currentCount));
-      
-      let purchaseSuccessful = false;
-      setMornings((currentMornings) => {
-        if (currentMornings >= cost) {
-          purchaseSuccessful = true;
-          return currentMornings - cost;
-        }
-        return currentMornings; 
-      });
+    // 1. Calculate the exact cost using your current inventory
+    const currentCount = inventory[id];
+    const cost = Math.floor(baseCost * Math.pow(1.15, currentCount));
 
-      return purchaseSuccessful ? { ...prev, [id]: currentCount + 1 } : prev;
-    });
-  }, []);
+    // 2. Check if you can afford it BEFORE triggering any state changes
+    if (mornings >= cost) {
+      // 3. Deduct the cost
+      setMornings((prev) => prev - cost);
+      
+      // 4. Add the item to the inventory
+      setInventory((prev) => ({ ...prev, [id]: prev[id] + 1 }));
+    }
+  }, [inventory, mornings]); // We added inventory and mornings to the dependency array so the function always has the freshest math
 
   // --- UI RENDERING ---
   return (
