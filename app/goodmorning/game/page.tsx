@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft } from 'lucide-react';
+import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft, AtSign } from 'lucide-react';
 import { Montserrat } from 'next/font/google';
 import Link from 'next/link';
+import { usePlayer } from '@/lib/usePlayer';
+import ProfileModal from './ProfileModal';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
 
@@ -126,6 +128,9 @@ export default function GoodMorningClicker() {
   const [offlineReport, setOfflineReport] = useState<OfflineReport | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [rayCount, setRayCount] = useState(0); // Tracks the sun rays!
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const player = usePlayer();
+  const closeProfile = useCallback(() => setIsProfileOpen(false), []);
   const { mornings, inventory } = game;
 
   // --- DERIVED STATS (Math calculated automatically) ---
@@ -245,9 +250,26 @@ export default function GoodMorningClicker() {
             <ArrowLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
           </Link>
         </div>
+
+        {/* Player handle (hidden until Supabase is configured) */}
+        {player.isEnabled && player.isReady && (
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              aria-label={player.profile ? `Edit player @${player.profile.handle}` : 'Claim your @handle'}
+              className="flex items-center gap-1 px-2 py-1 border-2 border-[#1A2E35] bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
+            >
+              <AtSign className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline max-w-[10rem] truncate">
+                {player.profile ? player.profile.handle : 'Claim handle'}
+              </span>
+            </button>
+          </div>
+        )}
         
         {/* Scoreboard */}
-        <div className="text-center space-y-2 sm:space-y-4 z-10 relative shrink-0">
+        {/* sm:pt clears the Back link and handle badge once the title gets wide */}
+        <div className="text-center space-y-2 sm:space-y-4 z-10 relative shrink-0 sm:pt-10">
           <h1 className="text-xl sm:text-3xl md:text-5xl font-extrabold uppercase tracking-tighter text-[#1A2E35]">
             Mornings Gooded
           </h1>
@@ -332,6 +354,13 @@ export default function GoodMorningClicker() {
       <AnimatePresence>
         {offlineReport && (
           <WelcomeBackModal report={offlineReport} onClose={() => setOfflineReport(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* Create / edit the player's @handle and name */}
+      <AnimatePresence>
+        {isProfileOpen && (
+          <ProfileModal profile={player.profile} onSave={player.saveProfile} onClose={closeProfile} />
         )}
       </AnimatePresence>
     </main>
