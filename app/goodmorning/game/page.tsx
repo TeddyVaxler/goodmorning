@@ -1,51 +1,41 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft, AtSign, Timer, Trophy, CircleHelp } from 'lucide-react';
+import { Sun, ArrowLeft, AtSign, Timer, Trophy, CircleHelp, Palette, Volume2, VolumeX, BriefcaseBusiness, Lock, Sparkles } from 'lucide-react';
 import { Montserrat } from 'next/font/google';
 import Link from 'next/link';
 import { usePlayer, type Profile } from '@/lib/usePlayer';
+import {
+  UPGRADES, NEW_GAME, BOSS_SKINS, COMBO_WINDOW_MS, GOLDEN_HOUR_SECONDS, GOLDEN_HOUR_MULTIPLIER, GOLDEN_SUN_VISIBLE_MS,
+  SAVE_KEY, getCost, getClickPower, getMps, earn, promote, comboTier, nextGoldenSunDelay, isUpgradeRevealed,
+  upgradeDescription, jobTitle, promotionMultiplier, promotionThreshold, skinById, loadSave, writeSave, parseSave,
+  formatNumber, formatDuration, type GameState, type Upgrade,
+} from '@/lib/idle';
+import { playTap, playMilestone, playComboUp, playGolden, playFanfare, playUnlock, isMuted as readMuted, setMuted as storeMuted } from '@/lib/sfx';
 import ProfileModal from './ProfileModal';
 import MorningRush from './MorningRush';
 import Leaderboard from './Leaderboard';
 import Walkthrough, { WALKTHROUGH_SEEN_KEY } from './Walkthrough';
+import GoldenSun from './GoldenSun';
+import WardrobeModal from './WardrobeModal';
+import PromotionModal from './PromotionModal';
+import BossHat, { seasonFor, type Season } from './BossHat';
 import { PrimaryButton } from './buttons';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
 
-// ==========================================
-// 1. GAME DATA (Easy to edit and expand!)
-// ==========================================
-const UPGRADES = [
-  { id: 'coffee', name: 'Extra Espresso', type: 'click', baseCost: 15, effect: 1, icon: Coffee, desc: '+1 Morning per click' },
-  { id: 'autoreply', name: 'Auto-Responder', type: 'passive', baseCost: 50, effect: 2, icon: Mail, desc: '+2 Mornings / sec' },
-  { id: 'donuts', name: 'Breakroom Donuts', type: 'passive', baseCost: 300, effect: 10, icon: CircleDot, desc: '+10 Mornings / sec' },
-  { id: 'newsletter', name: 'Company Newsletter', type: 'passive', baseCost: 1500, effect: 60, icon: Newspaper, desc: '+60 Mornings / sec' },
-  { id: 'standup', name: 'Mandatory 8 AM Standup', type: 'passive', baseCost: 8000, effect: 400, icon: Users, desc: '+400 Mornings / sec' },
-];
+// Game data and math live in lib/idle.ts; this file owns state, timers, and the screen.
 
-const SAVE_KEY = 'goodmorning-clicker-save';
-const BACKUP_KEY = `${SAVE_KEY}-backup`;
-const SAVE_VERSION = 1;
 const AUTOSAVE_MS = 5000;
 const TICK_MS = 250;
+const FAST_TICK_MS = 150; // Combo decay and the Golden Hour countdown
 const OFFLINE_CAP_SECONDS = 8 * 60 * 60; // Offline earnings stop after 8 hours away
 const WELCOME_BACK_MIN_SECONDS = 60; // Shorter absences still earn, just without the popup
+const TOAST_MS = 3500;
 
-// ==========================================
-// 2. TYPES
-// ==========================================
-type Inventory = Record<string, number>;
-
-interface GameState {
-  mornings: number;
-  inventory: Inventory;
-}
-
-interface SavedGame extends GameState {
-  savedAt: number;
-}
+// Sun ray color per combo tier (x1 .. x5)
+const RAY_COLORS = ['#F9CB66', '#fbbf24', '#f97316', '#ef4444', '#a855f7'];
 
 interface OfflineReport {
   earned: number;
@@ -56,94 +46,62 @@ interface Particle {
   id: number;
   x: number;
   y: number;
-  value: number;
+  label: string;
+  isBig?: boolean;
 }
 
-// ==========================================
-// 3. GAME MATH + SAVE SYSTEM
-// ==========================================
-const EMPTY_INVENTORY: Inventory = Object.fromEntries(UPGRADES.map((u) => [u.id, 0]));
-
-const getCost = (baseCost: number, owned: number) => Math.floor(baseCost * Math.pow(1.15, owned));
-
-const sumEffects = (inventory: Inventory, type: 'click' | 'passive') =>
-  UPGRADES.reduce((sum, u) => (u.type === type ? sum + u.effect * inventory[u.id] : sum), 0);
-
-const getClickPower = (inventory: Inventory) => 1 + sumEffects(inventory, 'click');
-const getMps = (inventory: Inventory) => sumEffects(inventory, 'passive');
-
-const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0;
-
-function parseSave(raw: string): SavedGame | null {
-  try {
-    const data = JSON.parse(raw);
-    if (data?.version !== SAVE_VERSION || !isCount(data.mornings) || !isCount(data.savedAt)) return null;
-
-    const inventory = { ...EMPTY_INVENTORY };
-    for (const u of UPGRADES) {
-      const owned = data.inventory?.[u.id];
-      if (isCount(owned)) inventory[u.id] = Math.floor(owned);
-    }
-    return { mornings: data.mornings, inventory, savedAt: data.savedAt };
-  } catch {
-    return null;
-  }
+interface Toast {
+  id: number;
+  text: string;
 }
 
-// Reads the save from localStorage. A save that can't be read is copied to a backup key
-// before the fresh game autosaves over it, so it can still be recovered or migrated later.
-function loadSave(): SavedGame | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const save = parseSave(raw);
-    if (!save) localStorage.setItem(BACKUP_KEY, raw);
-    return save;
-  } catch {
-    return null;
-  }
-}
-
-function writeSave(game: GameState) {
-  try {
-    const save = { version: SAVE_VERSION, ...game, savedAt: Date.now() };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-  } catch {
-    // Private mode or full storage: the game still works, it just won't persist
-  }
-}
-
-function formatDuration(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m`;
-  return `${Math.floor(totalSeconds)}s`;
-}
-
-// ==========================================
-// 4. MAIN GAME COMPONENT
-// ==========================================
 export default function GoodMorningClicker() {
   // --- STATE (The Game's Memory) ---
-  // Score and inventory live together so a purchase reads and writes both atomically
-  const [game, setGame] = useState<GameState>({ mornings: 0, inventory: EMPTY_INVENTORY });
+  // Score, upgrades, and stats live together so a purchase reads and writes them atomically
+  const [game, setGame] = useState<GameState>(NEW_GAME);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [offlineReport, setOfflineReport] = useState<OfflineReport | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
-  const [rayCount, setRayCount] = useState(0); // Tracks the sun rays!
+  const [combo, setCombo] = useState(0); // Taps in the current streak
+  const [goldenSun, setGoldenSun] = useState<{ x: number; y: number } | null>(null);
+  const [goldenCycle, setGoldenCycle] = useState(0); // Bumped to schedule the next Golden Sun
+  const [goldenSecondsLeft, setGoldenSecondsLeft] = useState(0);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isMuted, setIsMuted] = useState(false);
+  const [season, setSeason] = useState<Season | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isRushOpen, setIsRushOpen] = useState(false);
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
+  const [isWardrobeOpen, setIsWardrobeOpen] = useState(false);
+  const [isPromotionOpen, setIsPromotionOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<'shop' | 'leaderboard'>('shop');
   const [leaderboardVersion, setLeaderboardVersion] = useState(0); // Bumped to refetch the board
   const player = usePlayer();
   const { saveProfile: savePlayerProfile } = player;
 
+  // Refs let the long-running timers and the tap handler read fresh values without restarting
+  const gameRef = useRef(game);
+  const comboRef = useRef({ count: 0, lastTap: 0 });
+  const goldenEndsAtRef = useRef(0);
+  const tapCountRef = useRef(0); // Updated on every tap, so milestones never fire twice
+  useEffect(() => {
+    gameRef.current = game;
+  }, [game]);
+
+  const addToast = useCallback((text: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, text }].slice(-3));
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), TOAST_MS);
+  }, []);
+
+  // --- MODALS ---
   const closeProfile = useCallback(() => setIsProfileOpen(false), []);
   const openProfile = useCallback(() => setIsProfileOpen(true), []);
   const openRush = useCallback(() => setIsRushOpen(true), []);
   const closeRush = useCallback(() => setIsRushOpen(false), []);
+  const openWardrobe = useCallback(() => setIsWardrobeOpen(true), []);
+  const closeWardrobe = useCallback(() => setIsWardrobeOpen(false), []);
+  const closePromotion = useCallback(() => setIsPromotionOpen(false), []);
   const refreshLeaderboard = useCallback(() => setLeaderboardVersion((v) => v + 1), []);
   const openWalkthrough = useCallback(() => setIsWalkthroughOpen(true), []);
   const closeWalkthrough = useCallback(() => {
@@ -167,15 +125,17 @@ export default function GoodMorningClicker() {
   // screen readers). Set directly on the DOM: the installed React types don't know `inert` yet.
   const clickerPanelRef = useRef<HTMLDivElement>(null);
   const sidePanelRef = useRef<HTMLDivElement>(null);
-  const isAnyModalOpen = isRushOpen || isProfileOpen || isWalkthroughOpen || offlineReport !== null;
+  const isAnyModalOpen = isRushOpen || isProfileOpen || isWalkthroughOpen || isWardrobeOpen || isPromotionOpen || offlineReport !== null;
+  const isAnyModalOpenRef = useRef(isAnyModalOpen);
   useEffect(() => {
+    isAnyModalOpenRef.current = isAnyModalOpen;
     for (const panel of [clickerPanelRef.current, sidePanelRef.current]) {
       if (panel) panel.inert = isAnyModalOpen;
     }
   }, [isAnyModalOpen]);
 
-  // First visit: walk through how to play. Waits for the save to load so a returning player's
-  // welcome-back popup isn't stacked under it.
+  // First visit: walk through how to play. Waits for the save and profile to load so a
+  // returning player's welcome-back popup isn't stacked under it.
   useEffect(() => {
     if (!hasLoaded || !player.isReady || offlineReport) return;
     let hasSeen = true;
@@ -193,27 +153,34 @@ export default function GoodMorningClicker() {
     if (!error) refreshLeaderboard();
     return error;
   }, [savePlayerProfile, refreshLeaderboard]);
+
+  // --- DERIVED STATS ---
   const { mornings, inventory } = game;
-
-  // --- DERIVED STATS (Math calculated automatically) ---
-  const clickPower = useMemo(() => getClickPower(inventory), [inventory]);
-  const mps = useMemo(() => getMps(inventory), [inventory]);
-
-  // A ref lets the long-running timers read fresh state without restarting
-  const gameRef = useRef(game);
-  useEffect(() => {
-    gameRef.current = game;
-  }, [game]);
+  const isGoldenHour = goldenSecondsLeft > 0;
+  const tier = comboTier(combo);
+  const mps = getMps(game) * (isGoldenHour ? GOLDEN_HOUR_MULTIPLIER : 1);
+  const skin = skinById(game.skin);
+  const hat = game.hideSeasonalHat ? null : season;
+  const nextPromotionAt = promotionThreshold(game.promotions);
+  const canPromote = game.runMornings >= nextPromotionAt;
 
   // --- LOAD SAVE + OFFLINE EARNINGS ---
-  // Runs after mount (not during render) so server and client HTML match
+  // Runs after mount (not during render) so server and client HTML match. The ref keeps it to
+  // once: React's dev mode runs effects twice, which would add the save to itself.
+  const didLoadRef = useRef(false);
   useEffect(() => {
+    if (didLoadRef.current) return;
+    didLoadRef.current = true;
+    setIsMuted(readMuted());
+    setSeason(seasonFor());
     const save = loadSave();
     if (save) {
       const awaySeconds = Math.min(Math.max(0, (Date.now() - save.savedAt) / 1000), OFFLINE_CAP_SECONDS);
-      const earned = getMps(save.inventory) * awaySeconds;
-      // Keep any clicks made before the load landed (inventory is still empty at this point)
-      setGame((prev) => ({ mornings: prev.mornings + save.mornings + earned, inventory: save.inventory }));
+      const earned = getMps(save) * awaySeconds;
+      const { savedAt: _savedAt, ...saved } = save;
+      // Keep any taps made before the load landed
+      tapCountRef.current = saved.totalTaps;
+      setGame((prev) => earn(saved, prev.mornings + earned));
       if (awaySeconds >= WELCOME_BACK_MIN_SECONDS && earned >= 1) {
         setOfflineReport({ earned, seconds: awaySeconds });
       }
@@ -232,8 +199,11 @@ export default function GoodMorningClicker() {
     // Another tab saved: adopt its progress so this tab doesn't overwrite it on its next save
     const syncFromOtherTab = (e: StorageEvent) => {
       if (e.key !== SAVE_KEY || !e.newValue) return;
-      const save = parseSave(e.newValue);
-      if (save) setGame({ mornings: save.mornings, inventory: save.inventory });
+      const other = parseSave(e.newValue, { allowLegacy: false });
+      if (other) {
+        const { savedAt: _savedAt, ...state } = other;
+        setGame(state);
+      }
     };
 
     const interval = setInterval(save, AUTOSAVE_MS);
@@ -258,28 +228,101 @@ export default function GoodMorningClicker() {
       const now = performance.now();
       const elapsedSeconds = Math.min((now - lastTick) / 1000, OFFLINE_CAP_SECONDS);
       lastTick = now;
-      const earned = getMps(gameRef.current.inventory) * elapsedSeconds;
-      if (earned > 0) setGame((prev) => ({ ...prev, mornings: prev.mornings + earned }));
+      const golden = goldenEndsAtRef.current > Date.now() ? GOLDEN_HOUR_MULTIPLIER : 1;
+      const earned = getMps(gameRef.current) * golden * elapsedSeconds;
+      if (earned > 0) setGame((prev) => earn(prev, earned));
     }, TICK_MS);
     return () => clearInterval(interval);
   }, []);
 
-  // --- ACTIONS (What happens when you click) ---
-  const handleBossClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    // 1. Add score
-    setGame((prev) => ({ ...prev, mornings: prev.mornings + clickPower }));
-    
-    // 2. Add a Sun Ray (Caps at 72 rays to form a full circle)
-    setRayCount((prev) => (prev < 72 ? prev + 1 : prev));
+  // --- FAST TICK: combo decay and the Golden Hour countdown ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (comboRef.current.count > 0 && performance.now() - comboRef.current.lastTap > COMBO_WINDOW_MS) {
+        comboRef.current.count = 0;
+        setCombo(0);
+      }
+      const left = Math.max(0, Math.ceil((goldenEndsAtRef.current - Date.now()) / 1000));
+      setGoldenSecondsLeft((prev) => (prev === left ? prev : left));
+    }, FAST_TICK_MS);
+    return () => clearInterval(interval);
+  }, []);
 
-    // 3. Spawn floating text particle
+  // --- GOLDEN SUN: shows up at random, stays a few seconds ---
+  useEffect(() => {
+    if (!hasLoaded) return;
+    if (goldenSun) {
+      const hide = setTimeout(() => setGoldenSun(null), GOLDEN_SUN_VISIBLE_MS);
+      return () => clearTimeout(hide);
+    }
+    const spawn = setTimeout(() => {
+      // Only when someone's looking and nothing covers the game; otherwise wait for the next one
+      if (document.visibilityState === 'visible' && !isAnyModalOpenRef.current) {
+        setGoldenSun({ x: 15 + Math.random() * 70, y: 25 + Math.random() * 55 });
+      } else {
+        setGoldenCycle((c) => c + 1);
+      }
+    }, nextGoldenSunDelay(gameRef.current.goldenSunsCaught) * 1000);
+    return () => clearTimeout(spawn);
+  }, [hasLoaded, goldenSun, goldenCycle]);
+
+  const catchGoldenSun = useCallback(() => {
+    setGoldenSun(null);
+    goldenEndsAtRef.current = Date.now() + GOLDEN_HOUR_SECONDS * 1000;
+    setGoldenSecondsLeft(GOLDEN_HOUR_SECONDS);
+    setGame((prev) => ({ ...prev, goldenSunsCaught: prev.goldenSunsCaught + 1 }));
+    playGolden();
+    addToast(`Golden Hour! Everything x${GOLDEN_HOUR_MULTIPLIER} for ${GOLDEN_HOUR_SECONDS}s`);
+  }, [addToast]);
+
+  // --- UNLOCK TOASTS: new upgrades and boss skins ---
+  const revealed = UPGRADES.filter((u) => isUpgradeRevealed(u, game.totalMornings, inventory[u.id]));
+  const nextLocked = UPGRADES.find((u) => !isUpgradeRevealed(u, game.totalMornings, inventory[u.id]));
+  const unlockedSkinCount = BOSS_SKINS.filter((s) => game.totalMornings >= s.unlockAt).length;
+  const newestUpgradeName = revealed[revealed.length - 1]?.name;
+  const seenUnlocksRef = useRef<{ upgrades: number; skins: number } | null>(null);
+  useEffect(() => {
+    if (!hasLoaded) return;
+    const seen = seenUnlocksRef.current;
+    seenUnlocksRef.current = { upgrades: revealed.length, skins: unlockedSkinCount };
+    if (!seen) return; // First pass after loading: nothing is "new"
+    if (unlockedSkinCount > seen.skins) addToast(`New boss look: ${BOSS_SKINS[unlockedSkinCount - 1].name}! Open the wardrobe to try it on`);
+    if (revealed.length > seen.upgrades) addToast(`New upgrade: ${newestUpgradeName}`);
+    if (unlockedSkinCount > seen.skins || revealed.length > seen.upgrades) playUnlock();
+  }, [hasLoaded, revealed.length, unlockedSkinCount, newestUpgradeName, addToast]);
+
+  // --- ACTIONS ---
+  const handleBossClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Combo: taps close together keep the streak going
+    const now = performance.now();
+    const streak = comboRef.current;
+    streak.count = now - streak.lastTap <= COMBO_WINDOW_MS ? streak.count + 1 : 1;
+    streak.lastTap = now;
+    const current = comboTier(streak.count);
+    if (current.multiplier > comboTier(streak.count - 1).multiplier) playComboUp(current.multiplier);
+    else playTap(current.multiplier);
+    setCombo(streak.count);
+
+    // Earnings use the latest state (a purchase or promotion a moment ago counts); the floating
+    // number reads the last render, which can only lag by a frame
+    const boost = current.multiplier * (goldenEndsAtRef.current > Date.now() ? GOLDEN_HOUR_MULTIPLIER : 1);
+    const value = getClickPower(gameRef.current) * boost;
+    const taps = ++tapCountRef.current;
+    setGame((prev) => ({
+      ...earn(prev, getClickPower(prev) * boost),
+      totalTaps: prev.totalTaps + 1,
+      bestCombo: Math.max(prev.bestCombo, streak.count),
+    }));
+
+    // Floating "+N" where the tap landed, and a bigger burst every 100 taps
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const newParticle = { id: Date.now() + Math.random(), x, y, value: clickPower };
-    setParticles((prev) => [...prev, newParticle].slice(-20)); // Keep max 20 on screen
-  }, [clickPower]);
+    const added: Particle[] = [{ id: Date.now() + Math.random(), x: e.clientX - rect.left, y: e.clientY - rect.top, label: `+${formatNumber(value)}` }];
+    if (taps % 100 === 0) {
+      playMilestone();
+      added.push({ id: Date.now() + Math.random(), x: rect.width / 2 - 50, y: rect.height / 2, label: `${formatNumber(taps)} taps!`, isBig: true });
+    }
+    setParticles((prev) => [...prev, ...added].slice(-20)); // Keep max 20 on screen
+  }, []);
 
   const removeParticle = useCallback((id: number) => {
     setParticles((prev) => prev.filter((p) => p.id !== id));
@@ -292,22 +335,53 @@ export default function GoodMorningClicker() {
       const cost = getCost(baseCost, prev.inventory[id]);
       if (prev.mornings < cost) return prev;
       return {
+        ...prev,
         mornings: prev.mornings - cost,
         inventory: { ...prev.inventory, [id]: prev.inventory[id] + 1 },
       };
     });
   }, []);
 
+  const acceptPromotion = useCallback(() => {
+    const current = gameRef.current;
+    if (current.runMornings < promotionThreshold(current.promotions)) return;
+    // Saved right away: another open tab's autosave must not roll the promotion back
+    const promoted = promote(current);
+    gameRef.current = promoted;
+    writeSave(promoted);
+    setGame(promoted);
+    setIsPromotionOpen(false);
+    playFanfare();
+    addToast(`Promoted to ${jobTitle(current.promotions + 1)}! Everything earns x${formatNumber(promotionMultiplier(current.promotions + 1))}`);
+  }, [addToast]);
+
+  const selectSkin = useCallback((id: string) => setGame((prev) => ({ ...prev, skin: id })), []);
+  const toggleHat = useCallback(() => setGame((prev) => ({ ...prev, hideSeasonalHat: !prev.hideSeasonalHat })), []);
+  const toggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      storeMuted(!prev);
+      return !prev;
+    });
+  }, []);
+
+  const multiplier = promotionMultiplier(game.promotions);
+  const rayColor = RAY_COLORS[tier.multiplier - 1];
+
   // --- UI RENDERING ---
   return (
     // Pinned to the visible screen (fixed, not 100vh, which is taller than the screen in iPhone
     // Safari): the page itself never scrolls, only the side panel does. Side by side on desktop
     // and on phones turned sideways (`short`).
-    <main className={`fixed inset-0 overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 short:p-3 flex flex-col lg:flex-row short:flex-row gap-4 md:gap-8 short:gap-4 selection:bg-[#F9CB66]`}>
+    <main className={`fixed inset-0 overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 short:p-3 squat:p-2 flex flex-col lg:flex-row short:flex-row gap-4 md:gap-8 short:gap-4 squat:gap-2 selection:bg-[#F9CB66]`}>
 
-      {/* LEFT AREA: The Clicker Area (stays put) */}
-      <div ref={clickerPanelRef} className="shrink min-h-0 lg:flex-1 short:flex-1 min-w-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 short:p-3 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
-        
+      {/* LEFT AREA: The Clicker Area (stays put; shrinks before the shop does) */}
+      <div
+        ref={clickerPanelRef}
+        className={`flex-[1.5_1_0%] min-h-0 lg:flex-1 short:flex-1 min-w-0 flex flex-col items-center border-2 border-[#1A2E35] p-4 sm:p-6 short:p-3 squat:p-2 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden transition-colors duration-500 ${
+          isGoldenHour ? 'bg-[#fffbeb]' : 'bg-white'
+        }`}
+      >
+
         {/* Nav */}
         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 short:top-3 short:left-3 z-20 flex items-center">
           <Link href="/goodmorning" aria-label="Back" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-1 sm:px-2 py-1">
@@ -344,19 +418,39 @@ export default function GoodMorningClicker() {
             </button>
           </div>
         )}
-        
+
         {/* Scoreboard */}
         {/* sm:pt clears the Back link and handle badge once the title gets wide */}
-        <div className="text-center space-y-2 sm:space-y-4 short:space-y-1 z-10 relative shrink-0 sm:pt-10 short:pt-8">
+        <div className="text-center space-y-1.5 sm:space-y-3 short:space-y-1 squat:space-y-1 z-10 relative shrink-0 sm:pt-10 short:pt-8 squat:pt-1">
           <h1 className="px-14 sm:px-0 text-[clamp(0.95rem,5.2vw,1.25rem)] sm:text-3xl md:text-5xl short:text-xl font-extrabold uppercase tracking-tighter text-[#1A2E35]">
             Mornings Gooded
           </h1>
-          <div className="text-4xl sm:text-6xl md:text-8xl short:text-4xl font-black text-[#006b5b] drop-shadow-md break-all px-2">
-            {Math.floor(mornings).toLocaleString()}
+
+          {/* Job title and progress to the next promotion; becomes the promote button when ready */}
+          {canPromote ? (
+            <motion.button
+              onClick={() => setIsPromotionOpen(true)}
+              animate={{ scale: [1, 1.06, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-[#9FD085] border-2 border-[#1A2E35] text-xs sm:text-sm font-black uppercase shadow-[2px_2px_0px_0px_#1A2E35] touch-manipulation"
+            >
+              <BriefcaseBusiness className="w-4 h-4" /> Get Promoted!
+            </motion.button>
+          ) : (
+            <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-500">
+              <span>{jobTitle(game.promotions)}{multiplier > 1 && ` · x${formatNumber(multiplier)}`}</span>
+              <span className="w-16 sm:w-24 h-1.5 border border-[#1A2E35] bg-gray-100" title={`Next promotion at ${formatNumber(nextPromotionAt)} earned in this job`}>
+                <span className="block h-full bg-[#9FD085]" style={{ width: `${Math.min(100, (game.runMornings / nextPromotionAt) * 100)}%` }} />
+              </span>
+            </div>
+          )}
+
+          <div className={`text-4xl sm:text-6xl md:text-8xl short:text-4xl squat:text-3xl font-black drop-shadow-md break-all px-2 tabular-nums ${isGoldenHour ? 'text-[#b45309]' : 'text-[#006b5b]'}`}>
+            {formatNumber(mornings)}
           </div>
           <div className="flex items-center justify-center gap-2 sm:gap-3">
-            <div className="text-sm sm:text-lg font-bold bg-[#F9CB66] border-2 border-[#1A2E35] px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35]">
-              {mps.toLocaleString()} / sec
+            <div className={`text-sm sm:text-lg font-bold border-2 border-[#1A2E35] px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35] ${isGoldenHour ? 'bg-[#fde047]' : 'bg-[#F9CB66]'}`}>
+              {formatNumber(mps)} / sec
             </div>
             {player.isEnabled && (
               <button
@@ -369,28 +463,48 @@ export default function GoodMorningClicker() {
           </div>
         </div>
 
-        {/* The Clickable Sun/Boss */}
-      {/* Boss size is capped by screen height so short phones still leave room for the shop */}
-      <div className="flex-1 min-h-0 w-full flex items-center justify-center mt-2 sm:mt-8 short:mt-1 z-10 relative">
-        <div className="my-6 sm:my-8 short:my-3 relative w-36 h-36 sm:w-56 sm:h-56 md:w-72 md:h-72 short:w-28 short:h-28 supports-[height:1dvh]:w-[min(12rem,25dvh)] supports-[height:1dvh]:h-[min(12rem,25dvh)] sm:supports-[height:1dvh]:w-[min(16rem,30dvh)] sm:supports-[height:1dvh]:h-[min(16rem,30dvh)] md:supports-[height:1dvh]:w-[min(20rem,40dvh)] md:supports-[height:1dvh]:h-[min(20rem,40dvh)] short:supports-[height:1dvh]:w-[min(12rem,30dvh)] short:supports-[height:1dvh]:h-[min(12rem,30dvh)] touch-manipulation">
-          
-          {/* THE NEW SUN RAYS BACKGROUND */}
-          <SunRays count={rayCount} />
+        {/* The Clickable Sun/Boss. Sized from the space left in this area (container query
+            units), with room above for the seasonal hat; 9rem where those units aren't supported */}
+      <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center pb-5 z-10 relative [container-type:size]">
+        {/* Golden Hour banner (absolute, so it doesn't push the boss around) */}
+        <AnimatePresence>
+          {isGoldenHour && (
+            <motion.div
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute top-0 z-30 flex items-center gap-1 px-3 py-1 bg-[#fde047] border-2 border-[#1A2E35] text-xs sm:text-sm font-black uppercase shadow-[2px_2px_0px_0px_#1A2E35]"
+            >
+              <Sparkles className="w-4 h-4" /> Golden Hour x{GOLDEN_HOUR_MULTIPLIER} · {goldenSecondsLeft}s
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="shrink-0 relative [container-type:size] [--boss:9rem] supports-[width:1cqh]:[--boss:min(20rem,calc((100cqh_-_1.25rem)/1.3),80cqw)] w-[var(--boss)] h-[var(--boss)] mt-[calc(var(--boss)*0.27)] touch-manipulation">
+
+          {/* Sun rays fill in as the combo builds, and change color each tier */}
+          <SunRays count={Math.round(72 * Math.min(1, combo / 100))} color={rayColor} />
 
           {/* The Clickable Button */}
-          <motion.div 
+          <motion.div
             onClick={handleBossClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="relative z-10 w-full h-full rounded-full border-4 border-[#1A2E35] bg-[#F5A800] flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] active:shadow-none transition-all select-none cursor-pointer"
+            className={`relative z-10 w-full h-full rounded-full border-4 flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] active:shadow-none transition-all select-none cursor-pointer ${skin.ringClass}`}
           >
-            <img 
-              src="/goodmorning.png" 
+            <img
+              src="/goodmorning.png"
               alt="Click the Boss"
               className="w-full h-full object-contain pointer-events-none select-none"
               draggable={false}
             />
           </motion.div>
+
+          {/* Skin accessory and seasonal hat sit outside the circle so they can poke over its edge */}
+          {skin.overlay && !(hat && skin.onHead) && (
+            <span aria-hidden="true" className={`absolute z-20 leading-none pointer-events-none ${skin.overlayClass}`}>{skin.overlay}</span>
+          )}
+          {hat && <BossHat season={hat} />}
 
           {/* Floating Particles (+1) */}
           <AnimatePresence>
@@ -398,23 +512,72 @@ export default function GoodMorningClicker() {
               <motion.div
                 key={p.id}
                 initial={{ opacity: 1, y: p.y, x: p.x, scale: 0.5 }}
-                animate={{ opacity: 0, y: p.y - 100, scale: 1.5 }}
+                animate={{ opacity: 0, y: p.y - (p.isBig ? 160 : 100), scale: p.isBig ? 2 : 1.5 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                onAnimationComplete={() => removeParticle(p.id)} 
-                className="absolute text-2xl sm:text-3xl font-black text-[#006b5b] pointer-events-none z-50 drop-shadow-lg"
+                transition={{ duration: p.isBig ? 1.4 : 0.8, ease: "easeOut" }}
+                onAnimationComplete={() => removeParticle(p.id)}
+                className={`absolute font-black pointer-events-none z-50 drop-shadow-lg whitespace-nowrap ${p.isBig ? 'text-3xl text-[#f97316]' : 'text-2xl sm:text-3xl text-[#006b5b]'}`}
                 style={{ left: 0, top: 0 }}
               >
-                +{p.value}
+                {p.label}
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
+
+        {/* Combo meter floats at the bottom of the boss area, so it never pushes the layout */}
+        <div className={`absolute bottom-0 h-5 flex items-center gap-2 transition-opacity pointer-events-none ${combo >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+          <span className="text-xs font-black uppercase tracking-widest" style={{ color: tier.multiplier === 1 ? '#b45309' : rayColor }}>
+            Combo x{tier.multiplier}
+          </span>
+          <span className="w-20 sm:w-28 h-2 border border-[#1A2E35] bg-gray-100">
+            <span className="block h-full" style={{ width: `${tier.progress * 100}%`, background: rayColor }} />
+          </span>
+        </div>
       </div>
+
+        {/* Bottom corners: sound and wardrobe */}
+        <button
+          onClick={toggleMute}
+          aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}
+          className="absolute bottom-3 left-3 z-20 p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+        >
+          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+        </button>
+        <button
+          onClick={openWardrobe}
+          aria-label="Boss wardrobe"
+          className="absolute bottom-3 right-3 z-20 p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+        >
+          <Palette className="w-5 h-5" />
+        </button>
+
+        {/* Golden Sun */}
+        <AnimatePresence>
+          {goldenSun && <GoldenSun key="golden" x={goldenSun.x} y={goldenSun.y} onCatch={catchGoldenSun} />}
+        </AnimatePresence>
+
+        {/* Toasts: unlocks, promotions, Golden Hour. Never clickable, so they can't eat boss taps */}
+        <div className="absolute bottom-12 inset-x-3 z-30 flex flex-col items-center gap-2 pointer-events-none">
+          <AnimatePresence>
+            {toasts.map((t) => (
+              <motion.div
+                key={t.id}
+                role="status"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="max-w-full px-3 py-2 bg-[#1A2E35] text-white text-xs sm:text-sm font-bold text-center border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#F9CB66]"
+              >
+                {t.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
     </div>
 
       {/* RIGHT AREA: The Shop / Leaderboard. The header stays put; only the list below it scrolls. */}
-      <div ref={sidePanelRef} className="flex-1 min-h-[45%] lg:min-h-0 short:min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-[#1A2E35] bg-white shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-hidden">
+      <div ref={sidePanelRef} className="flex-[1_1_0%] min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-[#1A2E35] bg-white shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-hidden">
         {/* Panel header: a plain title, or Shop / Leaderboard tabs once accounts are on */}
         <div className="shrink-0 mx-4 mt-4 sm:mx-6 sm:mt-6 short:mx-3 short:mt-3 border-b-4 border-[#1A2E35] pb-2 flex items-center gap-4">
           {player.isEnabled ? (
@@ -444,23 +607,25 @@ export default function GoodMorningClicker() {
           />
         )}
 
-        {sidePanel === 'shop' && UPGRADES.map((upgrade) => {
-          // Calculate the current cost based on how many you already own
-          const cost = getCost(upgrade.baseCost, inventory[upgrade.id]);
-          const canAfford = mornings >= cost;
-
-          // Instead of a massive block of HTML here, we use our extracted component!
-          return (
-            <UpgradeButton
-              key={upgrade.id}
-              upgrade={upgrade}
-              cost={cost}
-              owned={inventory[upgrade.id]}
-              canAfford={canAfford}
-              onBuy={() => buyUpgrade(upgrade.id, upgrade.baseCost)}
-            />
-          );
-        })}
+        {sidePanel === 'shop' && (
+          <>
+            {revealed.map((upgrade) => {
+              const cost = getCost(upgrade.baseCost, inventory[upgrade.id]);
+              return (
+                <UpgradeButton
+                  key={upgrade.id}
+                  upgrade={upgrade}
+                  multiplier={multiplier}
+                  cost={cost}
+                  owned={inventory[upgrade.id]}
+                  canAfford={mornings >= cost}
+                  onBuy={buyUpgrade}
+                />
+              );
+            })}
+            {nextLocked && <LockedUpgrade revealAt={nextLocked.baseCost / 2} />}
+          </>
+        )}
         </div>
       </div>
 
@@ -483,12 +648,31 @@ export default function GoodMorningClicker() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {isWardrobeOpen && (
+          <WardrobeModal
+            game={game}
+            season={season}
+            isMuted={isMuted}
+            onSelectSkin={selectSkin}
+            onToggleHat={toggleHat}
+            onToggleMute={toggleMute}
+            onClose={closeWardrobe}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isPromotionOpen && <PromotionModal game={game} onPromote={acceptPromotion} onClose={closePromotion} />}
+      </AnimatePresence>
+
       {/* Once-a-day, 30-second Morning Rush for the leaderboard */}
       <AnimatePresence>
         {isRushOpen && (
           <MorningRush
             hasProfile={player.profile !== null}
             isCovered={isProfileOpen}
+            showHat={!game.hideSeasonalHat}
             onClaimHandle={openProfile}
             onShowLeaderboard={showLeaderboard}
             onScoreSaved={refreshLeaderboard}
@@ -508,7 +692,7 @@ export default function GoodMorningClicker() {
 }
 
 // ==========================================
-// 5. SUB-COMPONENTS (Clean code!)
+// SUB-COMPONENTS
 // ==========================================
 
 function PanelTab({ isActive, onClick, children }: { isActive: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -527,8 +711,8 @@ function PanelTab({ isActive, onClick, children }: { isActive: boolean; onClick:
 }
 
 // memo: the passive-income tick re-renders the game several times a second; the rays only
-// need to re-render when a new one is added
-const SunRays = memo(function SunRays({ count }: { count: number }) {
+// need to re-render when the combo changes
+const SunRays = memo(function SunRays({ count, color }: { count: number; color: string }) {
   return (
     <motion.div
     className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -542,8 +726,8 @@ const SunRays = memo(function SunRays({ count }: { count: number }) {
           animate={{ height: '150%', opacity: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 12 }} //stiffness is speed, damping
           // Rotates each new ray by 5 degrees (360 / 72 = 5)
-          style={{ rotate: i * 5 , height: '150%', transformOrigin: 'center'}}
-          className="absolute origin-center w-2 sm:w-3 bg-[#F9CB66] rounded-full"
+          style={{ rotate: i * 5 , height: '150%', transformOrigin: 'center', background: color }}
+          className="absolute origin-center w-2 sm:w-3 rounded-full"
           // The height makes the rays shoot outward past the container
         />
       ))}
@@ -589,7 +773,7 @@ function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose:
           While you were out for {formatDuration(report.seconds)}, the boss said good morning
         </p>
         <div className="text-4xl font-black text-[#006b5b] break-all">
-          +{Math.floor(report.earned).toLocaleString()}
+          +{formatNumber(report.earned)}
         </div>
         <p className="text-sm font-bold text-gray-600">times.</p>
         <PrimaryButton onClick={onClose} autoFocus>
@@ -600,37 +784,62 @@ function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose:
   );
 }
 
-// This extracts the messy HTML of the shop button into its own clean function.
-// It receives data (props) from the main game and returns the UI.
-function UpgradeButton({ upgrade, cost, owned, canAfford, onBuy }: any) {
+interface UpgradeButtonProps {
+  upgrade: Upgrade;
+  multiplier: number;
+  cost: number;
+  owned: number;
+  canAfford: boolean;
+  onBuy: (id: string, baseCost: number) => void;
+}
+
+// One row in the shop
+function UpgradeButton({ upgrade, multiplier, cost, owned, canAfford, onBuy }: UpgradeButtonProps) {
   const Icon = upgrade.icon;
-  
+
   return (
     <button
-      onClick={onBuy}
+      onClick={() => onBuy(upgrade.id, upgrade.baseCost)}
       disabled={!canAfford}
-      className={`group flex items-center justify-between p-3 sm:p-4 short:p-2 border-2 border-[#1A2E35] text-left transition-all touch-manipulation ${
-        canAfford 
-        ? 'bg-white hover:bg-[#F9CB66] shadow-[3px_3px_0px_0px_#1A2E35] hover:translate-y-[2px] hover:translate-x-[2px] cursor-pointer hover:shadow-none' 
+      className={`group shrink-0 flex items-center justify-between p-3 sm:p-4 short:p-2 border-2 border-[#1A2E35] text-left transition-all touch-manipulation ${
+        canAfford
+        ? 'bg-white hover:bg-[#F9CB66] shadow-[3px_3px_0px_0px_#1A2E35] hover:translate-y-[2px] hover:translate-x-[2px] cursor-pointer hover:shadow-none'
         : 'bg-gray-100 opacity-70 cursor-not-allowed'
       }`}
     >
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
         <div className={`p-2 sm:p-3 short:p-1.5 border-2 border-[#1A2E35] shrink-0 ${canAfford ? 'bg-[#006b5b] text-white' : 'bg-gray-300 text-gray-600'}`}>
           <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h3 className="font-bold text-sm sm:text-lg short:text-sm leading-tight">{upgrade.name}</h3>
-          <p className="text-[10px] sm:text-xs font-bold text-gray-600">{upgrade.desc}</p>
+          <p className="text-[10px] sm:text-xs font-bold text-gray-600">
+            {upgradeDescription({ ...upgrade, effect: upgrade.effect * multiplier })}
+          </p>
           <p className={`text-xs sm:text-sm font-black mt-1 ${canAfford ? 'text-[#006b5b]' : 'text-red-500'}`}>
-            Cost: {cost.toLocaleString()}
+            Cost: {formatNumber(cost)}
           </p>
         </div>
       </div>
-      
+
       <div className="text-xl sm:text-3xl short:text-xl font-black text-gray-300 group-hover:text-[#1A2E35] transition-colors px-2">
         {owned}
       </div>
     </button>
+  );
+}
+
+// Teaser for the next upgrade tier
+function LockedUpgrade({ revealAt }: { revealAt: number }) {
+  return (
+    <div className="shrink-0 flex items-center gap-3 sm:gap-4 p-3 sm:p-4 short:p-2 border-2 border-dashed border-gray-400 text-gray-500">
+      <div className="p-2 sm:p-3 short:p-1.5 border-2 border-dashed border-gray-400 shrink-0">
+        <Lock className="w-5 h-5 sm:w-6 sm:h-6" />
+      </div>
+      <div>
+        <h3 className="font-bold text-sm sm:text-lg short:text-sm leading-tight">???</h3>
+        <p className="text-[10px] sm:text-xs font-bold">Earn {formatNumber(revealAt)} total mornings to reveal</p>
+      </div>
+    </div>
   );
 }

@@ -17,12 +17,12 @@ const GAME_STEPS: Step[] = [
   {
     icon: MousePointerClick,
     title: 'Tap the boss',
-    body: 'Every tap says good morning once. Watch the sun rays fill in as you go.',
+    body: 'Every tap says good morning. Tap fast to build a combo (up to x5), and catch the Golden Sun when it floats by for 7x everything.',
   },
   {
     icon: ShoppingBag,
     title: 'Buy upgrades',
-    body: 'Spend your mornings in The Daily Grind. Most upgrades earn for you, even while you’re away (up to 8 hours).',
+    body: 'Spend mornings in The Daily Grind. Upgrades earn for you, even while you’re away (up to 8 hours). Earn enough to get promoted for a permanent x2.',
   },
 ];
 

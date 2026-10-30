@@ -18,12 +18,15 @@ import {
   type RushStats,
 } from '@/lib/rush';
 import { PrimaryButton, SecondaryButton } from './buttons';
+import BossHat, { seasonFor } from './BossHat';
+import { playTap, playMilestone } from '@/lib/sfx';
 
 type Phase = 'loading' | 'ready' | 'countdown' | 'playing' | 'submitting' | 'done' | 'error';
 
 interface MorningRushProps {
   hasProfile: boolean;
   isCovered: boolean; // Another modal is open on top; it owns the Escape key
+  showHat: boolean; // The player's wardrobe setting for the seasonal hat
   onClaimHandle: () => void;
   onShowLeaderboard: () => void;
   onScoreSaved: () => void;
@@ -41,7 +44,7 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // The server starts the clock when the countdown begins and checks the timing and score on
 // submit (see submit_rush in supabase/migrations).
 // memo: the game page re-renders on every passive-income tick; these props are all stable.
-export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle, onShowLeaderboard, onScoreSaved, onClose }: MorningRushProps) {
+export default memo(function MorningRush({ hasProfile, isCovered, showHat, onClaimHandle, onShowLeaderboard, onScoreSaved, onClose }: MorningRushProps) {
   const [phase, setPhase] = useState<Phase>('loading');
   const [countdown, setCountdown] = useState(RUSH_COUNTDOWN_SECONDS);
   const [timeLeft, setTimeLeft] = useState(RUSH_SECONDS);
@@ -187,7 +190,14 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
     if (phase !== 'playing') return;
     scoreRef.current += 1;
     setScore(scoreRef.current);
+    // Pitch climbs every 50 taps, with a flourish at each 50
+    if (scoreRef.current % 50 === 0) playMilestone();
+    else playTap(Math.min(5, 1 + Math.floor(scoreRef.current / 50)));
   };
+
+  // Seasonal hat on the Rush boss too (read once; the modal never stays open across seasons)
+  const [currentSeason] = useState(() => seasonFor());
+  const season = showHat ? currentSeason : null;
 
   return (
     <motion.div
@@ -255,17 +265,21 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
             <div className="w-full h-3 border-2 border-[#1A2E35] bg-gray-100">
               <div className="h-full bg-[#F9CB66]" style={{ width: `${(timeLeft / RUSH_SECONDS) * 100}%` }} />
             </div>
-            <motion.button
-              onClick={handleBossClick}
-              // Holding Enter auto-repeats clicks; only fresh key presses count
-              onKeyDown={(e) => e.repeat && e.preventDefault()}
-              disabled={phase !== 'playing'}
-              whileTap={{ scale: 0.92 }}
-              aria-label="Say good morning"
-              className="my-2 w-56 h-56 sm:w-64 sm:h-64 short:w-36 short:h-36 shrink-0 rounded-full border-4 border-[#1A2E35] bg-[#F5A800] overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] select-none touch-manipulation cursor-pointer disabled:cursor-wait"
-            >
-              <img src="/goodmorning.png" alt="" className="w-full h-full object-contain pointer-events-none select-none" draggable={false} />
-            </motion.button>
+            {/* The hat sits in the same box as the boss so it lines up at every size */}
+            <div className="relative my-2 shrink-0 w-56 h-56 sm:w-64 sm:h-64 short:w-36 short:h-36">
+              <motion.button
+                onClick={handleBossClick}
+                // Holding Enter auto-repeats clicks; only fresh key presses count
+                onKeyDown={(e) => e.repeat && e.preventDefault()}
+                disabled={phase !== 'playing'}
+                whileTap={{ scale: 0.92 }}
+                aria-label="Say good morning"
+                className="w-full h-full rounded-full border-4 border-[#1A2E35] bg-[#F5A800] overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] select-none touch-manipulation cursor-pointer disabled:cursor-wait"
+              >
+                <img src="/goodmorning.png" alt="" className="w-full h-full object-contain pointer-events-none select-none" draggable={false} />
+              </motion.button>
+              {season && <BossHat season={season} />}
+            </div>
             {phase === 'submitting' && <p className="text-sm font-bold text-gray-600">Saving your score...</p>}
           </>
         )}
