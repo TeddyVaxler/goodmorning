@@ -4,6 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Good Morning!",
   description: "The boss is here.",
+  icons: {
+    icon: '/goodmorning.png', // <-- Added favicon link here
+    apple: '/goodmorning.png', // Optional: for iOS home screen bookmarks
+  },
 };
 
 // This locks the screen on mobile devices so frantic clicking 
