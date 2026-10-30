@@ -91,7 +91,6 @@ export default function GoodMorningClicker() {
   useEffect(() => {
     return () => {
       if (rayTimeoutRef.current) clearTimeout(rayTimeoutRef.current);
-      if (rayResetTimeoutRef.current) clearTimeout(rayResetTimeoutRef.current);
     };
   }, []);
 
@@ -405,13 +404,10 @@ export default function GoodMorningClicker() {
     setRaysActive(true);
 
     if (rayTimeoutRef.current) clearTimeout(rayTimeoutRef.current);
-    if (rayResetTimeoutRef.current) clearTimeout(rayResetTimeoutRef.current);
-
+    
+    // Only toggle the active state; let Framer Motion handle the fade without unmounting them
     rayTimeoutRef.current = setTimeout(() => {
       setRaysActive(false);
-      rayResetTimeoutRef.current = setTimeout(() => {
-        setRayCount(0);
-      }, 3000); 
     }, 5000);
     // Floating "+N" where the tap landed, and a bigger burst every 100 taps
     const rect = e.currentTarget.getBoundingClientRect();
@@ -859,7 +855,7 @@ const SunRays = memo(function SunRays({ count, isActive, color }: { count: numbe
             transformOrigin: 'bottom center', 
             background: isMax ? '#ffffff' : color 
           }}
-          className={`absolute bottom-1/2 w-2 sm:w-3 rounded-full transition-colors duration-500 ${
+          className={`absolute bottom-1/2 w-2 sm:w-3 rounded-full transition-colors duration-500 will-change-[transform,opacity] ${
             isMax ? 'shadow-[0_0_12px_#F9CB66]' : ''
           }`}
         />
