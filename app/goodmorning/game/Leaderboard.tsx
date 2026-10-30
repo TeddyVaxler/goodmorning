@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo } from 'react';
-import { Timer } from 'lucide-react';
+import { Timer, AtSign, Flame } from 'lucide-react';
 import {
   fetchLeaderboard,
   fetchMyRushStats,
@@ -12,7 +12,9 @@ import {
 
 interface LeaderboardProps {
   refreshKey: number; // Bump to refetch, e.g. after a Rush or a handle change
+  hasProfile: boolean;
   onPlayRush: () => void;
+  onClaimHandle: () => void;
 }
 
 const PERIODS: { id: LeaderboardPeriod; label: string }[] = [
@@ -22,7 +24,7 @@ const PERIODS: { id: LeaderboardPeriod; label: string }[] = [
 
 // Top 10 Morning Rush scores by @handle, plus the viewer's own numbers.
 // memo: the game page re-renders on every passive-income tick; these props are all stable.
-export default memo(function Leaderboard({ refreshKey, onPlayRush }: LeaderboardProps) {
+export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, onClaimHandle }: LeaderboardProps) {
   const [period, setPeriod] = useState<LeaderboardPeriod>('today');
   const [rows, setRows] = useState<LeaderboardRow[] | null>(null);
   const [myStats, setMyStats] = useState<RushStats | null>(null);
@@ -47,7 +49,7 @@ export default memo(function Leaderboard({ refreshKey, onPlayRush }: Leaderboard
     };
   }, [period, refreshKey]);
 
-  const myBest = period === 'today' ? myStats?.bestToday : myStats?.bestAllTime;
+  const myBest = period === 'today' ? myStats?.todayScore : myStats?.bestAllTime;
 
   return (
     <div className="flex flex-col gap-3">
@@ -102,18 +104,41 @@ export default memo(function Leaderboard({ refreshKey, onPlayRush }: Leaderboard
       <div className="mt-1 flex items-center justify-between gap-3 p-3 border-2 border-dashed border-[#1A2E35] bg-[#f4f7f5]">
         <span className="text-xs sm:text-sm font-bold">
           {myBest != null ? (
-            <>Your best {period === 'today' ? 'today' : 'ever'}: <span className="font-black text-[#006b5b]">{myBest}</span></>
+            <>Your {period === 'today' ? 'score today' : 'best ever'}: <span className="font-black text-[#006b5b]">{myBest}</span></>
           ) : (
-            'No score yet'
+            period === 'today' && myStats?.playedToday ? "Today's run didn't finish" : 'No score yet'
+          )}
+          {myStats && myStats.currentStreak > 1 && (
+            <span className="ml-2 inline-flex items-center gap-0.5 text-orange-600">
+              <Flame className="w-3.5 h-3.5" />{myStats.currentStreak}
+            </span>
           )}
         </span>
         <button
           onClick={onPlayRush}
           className="shrink-0 flex items-center gap-1 px-3 py-1 bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] text-xs sm:text-sm font-bold border-2 border-[#1A2E35] transition-colors touch-manipulation"
         >
-          <Timer className="w-4 h-4" /> Play Rush
+          <Timer className="w-4 h-4" /> {myStats?.playedToday ? 'My Result' : 'Play Rush'}
         </button>
       </div>
+
+      {/* Scores are saved without a handle but stay off the board: nudge to claim one */}
+      {!hasProfile && (
+        <div className="flex flex-col gap-2 p-3 border-2 border-[#1A2E35] bg-[#fff8e6]">
+          <p className="text-xs sm:text-sm font-bold">
+            {myStats?.todayScore != null
+              ? "You've played, but you're not on the board yet."
+              : 'Want your name up here?'}{' '}
+            Claim an @handle. No email, and your real name stays private.
+          </p>
+          <button
+            onClick={onClaimHandle}
+            className="self-start flex items-center gap-1 px-3 py-1 bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black border-2 border-[#1A2E35] shadow-[2px_2px_0px_0px_#1A2E35] transition-colors touch-manipulation"
+          >
+            <AtSign className="w-4 h-4" /> Claim Handle
+          </button>
+        </div>
+      )}
     </div>
   );
 });

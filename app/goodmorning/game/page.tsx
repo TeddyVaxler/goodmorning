@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft, AtSign, Timer, Trophy } from 'lucide-react';
+import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft, AtSign, Timer, Trophy, CircleHelp } from 'lucide-react';
 import { Montserrat } from 'next/font/google';
 import Link from 'next/link';
 import { usePlayer, type Profile } from '@/lib/usePlayer';
 import ProfileModal from './ProfileModal';
 import MorningRush from './MorningRush';
 import Leaderboard from './Leaderboard';
+import Walkthrough, { WALKTHROUGH_SEEN_KEY } from './Walkthrough';
+import { PrimaryButton } from './buttons';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
 
@@ -132,6 +134,7 @@ export default function GoodMorningClicker() {
   const [rayCount, setRayCount] = useState(0); // Tracks the sun rays!
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isRushOpen, setIsRushOpen] = useState(false);
+  const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
   const [sidePanel, setSidePanel] = useState<'shop' | 'leaderboard'>('shop');
   const [leaderboardVersion, setLeaderboardVersion] = useState(0); // Bumped to refetch the board
   const player = usePlayer();
@@ -142,6 +145,19 @@ export default function GoodMorningClicker() {
   const openRush = useCallback(() => setIsRushOpen(true), []);
   const closeRush = useCallback(() => setIsRushOpen(false), []);
   const refreshLeaderboard = useCallback(() => setLeaderboardVersion((v) => v + 1), []);
+  const openWalkthrough = useCallback(() => setIsWalkthroughOpen(true), []);
+  const closeWalkthrough = useCallback(() => {
+    setIsWalkthroughOpen(false);
+    try {
+      localStorage.setItem(WALKTHROUGH_SEEN_KEY, '1');
+    } catch {
+      // Storage blocked: the walkthrough just shows again next visit
+    }
+  }, []);
+  const claimHandleFromWalkthrough = useCallback(() => {
+    closeWalkthrough();
+    setIsProfileOpen(true);
+  }, [closeWalkthrough]);
   const showLeaderboard = useCallback(() => {
     setIsRushOpen(false);
     setSidePanel('leaderboard');
@@ -151,12 +167,25 @@ export default function GoodMorningClicker() {
   // screen readers). Set directly on the DOM: the installed React types don't know `inert` yet.
   const clickerPanelRef = useRef<HTMLDivElement>(null);
   const sidePanelRef = useRef<HTMLDivElement>(null);
-  const isAnyModalOpen = isRushOpen || isProfileOpen || offlineReport !== null;
+  const isAnyModalOpen = isRushOpen || isProfileOpen || isWalkthroughOpen || offlineReport !== null;
   useEffect(() => {
     for (const panel of [clickerPanelRef.current, sidePanelRef.current]) {
       if (panel) panel.inert = isAnyModalOpen;
     }
   }, [isAnyModalOpen]);
+
+  // First visit: walk through how to play. Waits for the save to load so a returning player's
+  // welcome-back popup isn't stacked under it.
+  useEffect(() => {
+    if (!hasLoaded || !player.isReady || offlineReport) return;
+    let hasSeen = true;
+    try {
+      hasSeen = localStorage.getItem(WALKTHROUGH_SEEN_KEY) !== null;
+    } catch {
+      // Storage blocked: skip the walkthrough rather than show it on every visit
+    }
+    if (!hasSeen) setIsWalkthroughOpen(true);
+  }, [hasLoaded, player.isReady, offlineReport]);
 
   // A new or changed handle changes what the leaderboard shows
   const saveProfile = useCallback(async (input: Profile) => {
@@ -271,42 +300,58 @@ export default function GoodMorningClicker() {
 
   // --- UI RENDERING ---
   return (
-    // Locked to the screen height: the page itself never scrolls, only the shop does
-    <main className={`h-[100dvh] w-full overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 flex flex-col lg:flex-row gap-4 md:gap-8 selection:bg-[#F9CB66]`}>
+    // Pinned to the visible screen (fixed, not 100vh, which is taller than the screen in iPhone
+    // Safari): the page itself never scrolls, only the side panel does. Side by side on desktop
+    // and on phones turned sideways (`short`).
+    <main className={`fixed inset-0 overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 short:p-3 flex flex-col lg:flex-row short:flex-row gap-4 md:gap-8 short:gap-4 selection:bg-[#F9CB66]`}>
 
       {/* LEFT AREA: The Clicker Area (stays put) */}
-      <div ref={clickerPanelRef} className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
+      <div ref={clickerPanelRef} className="shrink-0 lg:flex-1 lg:min-h-0 short:flex-1 short:min-h-0 min-w-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 short:p-3 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
         
         {/* Nav */}
-        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20">
-          <Link href="/goodmorning" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-2 py-1">
+        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 short:top-3 short:left-3 z-20 flex items-center">
+          <Link href="/goodmorning" aria-label="Back" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-1 sm:px-2 py-1">
             <ArrowLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
           </Link>
+          <button
+            onClick={openWalkthrough}
+            aria-label="How to play"
+            className="p-1 text-[#006b5b] hover:text-[#1A2E35] transition-colors touch-manipulation"
+          >
+            <CircleHelp className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Player handle (hidden until Supabase is configured) */}
         {player.isEnabled && player.isReady && (
-          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 short:top-3 short:right-3 z-20">
             <button
               onClick={openProfile}
               aria-label={player.profile ? `Edit player @${player.profile.handle}` : 'Claim your @handle'}
-              className="flex items-center gap-1 px-2 py-1 border-2 border-[#1A2E35] bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
+              className="relative flex items-center gap-1 px-2 py-1 border-2 border-[#1A2E35] bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
             >
               <AtSign className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline max-w-[10rem] truncate">
                 {player.profile ? player.profile.handle : 'Claim handle'}
               </span>
+              {/* Unclaimed: a pulsing dot draws the eye on phones, where the label is hidden */}
+              {!player.profile && (
+                <span className="absolute -top-1.5 -right-1.5 flex w-3 h-3" aria-hidden="true">
+                  <span className="absolute inline-flex w-full h-full rounded-full bg-[#006b5b] opacity-75 animate-ping" />
+                  <span className="relative inline-flex w-3 h-3 rounded-full bg-[#006b5b] border border-white" />
+                </span>
+              )}
             </button>
           </div>
         )}
         
         {/* Scoreboard */}
         {/* sm:pt clears the Back link and handle badge once the title gets wide */}
-        <div className="text-center space-y-2 sm:space-y-4 z-10 relative shrink-0 sm:pt-10">
-          <h1 className="text-xl sm:text-3xl md:text-5xl font-extrabold uppercase tracking-tighter text-[#1A2E35]">
+        <div className="text-center space-y-2 sm:space-y-4 short:space-y-1 z-10 relative shrink-0 sm:pt-10 short:pt-8">
+          <h1 className="px-14 sm:px-0 text-[clamp(0.95rem,5.2vw,1.25rem)] sm:text-3xl md:text-5xl short:text-xl font-extrabold uppercase tracking-tighter text-[#1A2E35]">
             Mornings Gooded
           </h1>
-          <div className="text-4xl sm:text-6xl md:text-8xl font-black text-[#006b5b] drop-shadow-md break-all px-2">
+          <div className="text-4xl sm:text-6xl md:text-8xl short:text-4xl font-black text-[#006b5b] drop-shadow-md break-all px-2">
             {Math.floor(mornings).toLocaleString()}
           </div>
           <div className="flex items-center justify-center gap-2 sm:gap-3">
@@ -325,8 +370,9 @@ export default function GoodMorningClicker() {
         </div>
 
         {/* The Clickable Sun/Boss */}
-      <div className="flex-1 w-full flex items-center justify-center mt-4 sm:mt-8 z-10 relative">
-        <div className="mt-8 mb-4 sm:mb-8 relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 touch-manipulation">
+      {/* Boss size is capped by screen height so short phones still leave room for the shop */}
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center mt-2 sm:mt-8 short:mt-1 z-10 relative">
+        <div className="my-6 sm:my-8 short:my-3 relative w-[min(12rem,25dvh)] h-[min(12rem,25dvh)] sm:w-[min(16rem,30dvh)] sm:h-[min(16rem,30dvh)] md:w-[min(20rem,40dvh)] md:h-[min(20rem,40dvh)] short:w-[min(12rem,30dvh)] short:h-[min(12rem,30dvh)] touch-manipulation">
           
           {/* THE NEW SUN RAYS BACKGROUND */}
           <SunRays count={rayCount} />
@@ -367,17 +413,17 @@ export default function GoodMorningClicker() {
       </div>
     </div>
 
-      {/* RIGHT AREA: The Shop (fills the leftover height and scrolls on its own) */}
-      <div ref={sidePanelRef} className="flex-1 min-h-0 lg:max-w-md w-full flex flex-col gap-3 sm:gap-4 border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-y-auto overscroll-contain">
+      {/* RIGHT AREA: The Shop / Leaderboard. The header stays put; only the list below it scrolls. */}
+      <div ref={sidePanelRef} className="flex-1 min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-[#1A2E35] bg-white shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-hidden">
         {/* Panel header: a plain title, or Shop / Leaderboard tabs once accounts are on */}
-        <div className="border-b-4 border-[#1A2E35] pb-2 mb-2 flex items-center gap-4 sticky top-0 bg-white z-20">
+        <div className="shrink-0 mx-4 mt-4 sm:mx-6 sm:mt-6 short:mx-3 short:mt-3 border-b-4 border-[#1A2E35] pb-2 flex items-center gap-4">
           {player.isEnabled ? (
-            <div role="tablist" aria-label="Side panel" className="flex items-center gap-4">
+            <div role="tablist" aria-label="Side panel" className="flex items-center gap-3 sm:gap-4 min-w-0">
               <PanelTab isActive={sidePanel === 'shop'} onClick={() => setSidePanel('shop')}>
-                <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] fill-current" /> The Daily Grind
+                <Sun className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-[#F9CB66] fill-current" /> Daily Grind
               </PanelTab>
               <PanelTab isActive={sidePanel === 'leaderboard'} onClick={() => setSidePanel('leaderboard')}>
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66]" /> Leaderboard
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-[#F9CB66]" /> Leaderboard
               </PanelTab>
             </div>
           ) : (
@@ -388,8 +434,14 @@ export default function GoodMorningClicker() {
           )}
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pb-4 pt-3 sm:px-6 sm:pb-6 sm:pt-4 short:px-3 short:pb-3 flex flex-col gap-3 sm:gap-4">
         {sidePanel === 'leaderboard' && player.isEnabled && (
-          <Leaderboard refreshKey={leaderboardVersion} onPlayRush={openRush} />
+          <Leaderboard
+            refreshKey={leaderboardVersion}
+            hasProfile={player.profile !== null}
+            onPlayRush={openRush}
+            onClaimHandle={openProfile}
+          />
         )}
 
         {sidePanel === 'shop' && UPGRADES.map((upgrade) => {
@@ -409,6 +461,7 @@ export default function GoodMorningClicker() {
             />
           );
         })}
+        </div>
       </div>
 
       {/* Welcome-back popup with offline earnings */}
@@ -418,7 +471,19 @@ export default function GoodMorningClicker() {
         )}
       </AnimatePresence>
 
-      {/* 30-second Morning Rush for the leaderboard */}
+      {/* How to play: first visit and the "?" button */}
+      <AnimatePresence>
+        {isWalkthroughOpen && (
+          <Walkthrough
+            accountsEnabled={player.isEnabled}
+            hasProfile={player.profile !== null}
+            onClaimHandle={claimHandleFromWalkthrough}
+            onClose={closeWalkthrough}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Once-a-day, 30-second Morning Rush for the leaderboard */}
       <AnimatePresence>
         {isRushOpen && (
           <MorningRush
@@ -452,7 +517,7 @@ function PanelTab({ isActive, onClick, children }: { isActive: boolean; onClick:
       role="tab"
       aria-selected={isActive}
       onClick={onClick}
-      className={`flex items-center gap-2 text-sm sm:text-lg font-extrabold uppercase transition-colors touch-manipulation ${
+      className={`flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-[clamp(0.75rem,3.6vw,0.875rem)] sm:text-lg short:text-xs font-extrabold uppercase transition-colors touch-manipulation ${
         isActive ? 'text-[#1A2E35]' : 'text-gray-400 hover:text-[#006b5b]'
       }`}
     >
@@ -514,7 +579,7 @@ function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose:
         exit={{ scale: 0.8, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm flex flex-col items-center gap-4 p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="w-full max-w-sm max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
       >
         <Sun className="w-12 h-12 text-[#F9CB66] fill-current" />
         <h2 id="welcome-back-title" className="text-2xl font-extrabold uppercase tracking-tighter">
@@ -527,13 +592,9 @@ function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose:
           +{Math.floor(report.earned).toLocaleString()}
         </div>
         <p className="text-sm font-bold text-gray-600">times.</p>
-        <button
-          onClick={onClose}
-          autoFocus
-          className="w-full px-6 py-3 bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] font-bold border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
-        >
+        <PrimaryButton onClick={onClose} autoFocus>
           Clock In
-        </button>
+        </PrimaryButton>
       </motion.div>
     </motion.div>
   );
@@ -548,18 +609,18 @@ function UpgradeButton({ upgrade, cost, owned, canAfford, onBuy }: any) {
     <button
       onClick={onBuy}
       disabled={!canAfford}
-      className={`group flex items-center justify-between p-3 sm:p-4 border-2 border-[#1A2E35] text-left transition-all touch-manipulation ${
+      className={`group flex items-center justify-between p-3 sm:p-4 short:p-2 border-2 border-[#1A2E35] text-left transition-all touch-manipulation ${
         canAfford 
         ? 'bg-white hover:bg-[#F9CB66] shadow-[3px_3px_0px_0px_#1A2E35] hover:translate-y-[2px] hover:translate-x-[2px] cursor-pointer hover:shadow-none' 
         : 'bg-gray-100 opacity-70 cursor-not-allowed'
       }`}
     >
       <div className="flex items-center gap-3 sm:gap-4">
-        <div className={`p-2 sm:p-3 border-2 border-[#1A2E35] shrink-0 ${canAfford ? 'bg-[#006b5b] text-white' : 'bg-gray-300 text-gray-600'}`}>
+        <div className={`p-2 sm:p-3 short:p-1.5 border-2 border-[#1A2E35] shrink-0 ${canAfford ? 'bg-[#006b5b] text-white' : 'bg-gray-300 text-gray-600'}`}>
           <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
         <div>
-          <h3 className="font-bold text-sm sm:text-lg leading-tight">{upgrade.name}</h3>
+          <h3 className="font-bold text-sm sm:text-lg short:text-sm leading-tight">{upgrade.name}</h3>
           <p className="text-[10px] sm:text-xs font-bold text-gray-600">{upgrade.desc}</p>
           <p className={`text-xs sm:text-sm font-black mt-1 ${canAfford ? 'text-[#006b5b]' : 'text-red-500'}`}>
             Cost: {cost.toLocaleString()}
@@ -567,7 +628,7 @@ function UpgradeButton({ upgrade, cost, owned, canAfford, onBuy }: any) {
         </div>
       </div>
       
-      <div className="text-xl sm:text-3xl font-black text-gray-300 group-hover:text-[#1A2E35] transition-colors px-2">
+      <div className="text-xl sm:text-3xl short:text-xl font-black text-gray-300 group-hover:text-[#1A2E35] transition-colors px-2">
         {owned}
       </div>
     </button>

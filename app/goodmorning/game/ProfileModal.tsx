@@ -73,7 +73,7 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="w-full max-w-sm flex flex-col gap-4 p-6 bg-white border-2 border-[#1A2E35] shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="w-full max-w-sm max-h-full overflow-y-auto flex flex-col gap-4 p-6 bg-white border-2 border-[#1A2E35] shadow-[8px_8px_0px_0px_#1A2E35]"
       >
         <div className="flex flex-col items-center gap-2 text-center">
           <UserRound className="w-10 h-10 text-[#006b5b]" />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { motion } from 'framer-motion';
-import { Timer, Trophy, X, AtSign } from 'lucide-react';
+import { Timer, Trophy, X, AtSign, Share2, Flame } from 'lucide-react';
 import {
   RUSH_SECONDS,
   RUSH_MAX_SCORE,
@@ -10,10 +10,16 @@ import {
   startRush,
   submitRush,
   fetchMyRushStats,
+  formatCentralTime,
+  formatCentralDate,
+  rushLabel,
+  secondsUntilNextRush,
+  buildShareText,
   type RushStats,
 } from '@/lib/rush';
+import { PrimaryButton, SecondaryButton } from './buttons';
 
-type Phase = 'ready' | 'countdown' | 'playing' | 'submitting' | 'results' | 'error';
+type Phase = 'loading' | 'ready' | 'countdown' | 'playing' | 'submitting' | 'done' | 'error';
 
 interface MorningRushProps {
   hasProfile: boolean;
@@ -26,20 +32,27 @@ interface MorningRushProps {
 
 // Phases where closing would throw away a run in progress
 const LOCKED_PHASES: Phase[] = ['countdown', 'playing', 'submitting'];
+const SUBMIT_ATTEMPTS = 3;
+const SUBMIT_RETRY_MS = 1500;
 
-// A 30-second click sprint. The server starts the clock when the countdown begins and checks
-// the timing and score on submit (see submit_rush in supabase/migrations).
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// A once-a-day, 30-second click sprint, like Wordle: one shot per player per Central day.
+// The server starts the clock when the countdown begins and checks the timing and score on
+// submit (see submit_rush in supabase/migrations).
 // memo: the game page re-renders on every passive-income tick; these props are all stable.
 export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle, onShowLeaderboard, onScoreSaved, onClose }: MorningRushProps) {
-  const [phase, setPhase] = useState<Phase>('ready');
+  const [phase, setPhase] = useState<Phase>('loading');
   const [countdown, setCountdown] = useState(RUSH_COUNTDOWN_SECONDS);
   const [timeLeft, setTimeLeft] = useState(RUSH_SECONDS);
   const [score, setScore] = useState(0);
   const [stats, setStats] = useState<RushStats | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  // What "Try Again" does: re-send the finished run's score, or start over from the top
+  const [retryAction, setRetryAction] = useState<'submit' | 'restart'>('restart');
 
   const scoreRef = useRef(0);
-  const runIdRef = useRef<Promise<string | null> | null>(null);
+  const runRef = useRef<ReturnType<typeof startRush> | null>(null);
   // The parent re-renders several times a second, so callbacks are read through a ref
   // instead of being effect dependencies (which would re-run the submit effect)
   const onScoreSavedRef = useRef(onScoreSaved);
@@ -49,13 +62,26 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
 
   const isLocked = LOCKED_PHASES.includes(phase);
 
+  // --- LOADING: already played today? Show the result instead of a new run ---
+  useEffect(() => {
+    if (phase !== 'loading') return;
+    let cancelled = false;
+    fetchMyRushStats().then((fresh) => {
+      if (cancelled) return;
+      setStats(fresh);
+      setPhase(fresh?.playedToday ? 'done' : 'ready');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase]);
+
   const begin = useCallback(() => {
     scoreRef.current = 0;
     setScore(0);
-    setStats(null);
     setTimeLeft(RUSH_SECONDS);
     setCountdown(RUSH_COUNTDOWN_SECONDS);
-    runIdRef.current = startRush(); // Runs during the countdown
+    runRef.current = startRush(); // Runs during the countdown
     setPhase('countdown');
   }, []);
 
@@ -71,12 +97,15 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
         return;
       }
       clearInterval(interval);
-      const runId = await runIdRef.current;
-      if (cancelled) return;
-      if (runId) {
+      const run = await runRef.current;
+      if (cancelled || !run) return;
+      if ('runId' in run) {
         setPhase('playing');
+      } else if (run.error === 'already_played') {
+        setPhase('loading'); // Shows today's result
       } else {
         setErrorMessage("Couldn't reach the leaderboard. Check your connection and try again.");
+        setRetryAction('restart');
         setPhase('error');
       }
     }, 100);
@@ -101,21 +130,30 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
     return () => clearInterval(interval);
   }, [phase]);
 
-  // --- SUBMITTING ---
+  // --- SUBMITTING: today's only attempt, so retry a flaky network a few times ---
   useEffect(() => {
     if (phase !== 'submitting') return;
     let cancelled = false;
     (async () => {
-      const runId = await runIdRef.current;
-      const result = runId ? await submitRush(runId, Math.min(scoreRef.current, RUSH_MAX_SCORE)) : null;
+      const run = await runRef.current;
+      if (!run || !('runId' in run)) return;
+      let result = await submitRush(run.runId, Math.min(scoreRef.current, RUSH_MAX_SCORE));
+      for (let attempt = 1; attempt < SUBMIT_ATTEMPTS && 'error' in result && result.error === 'network' && !cancelled; attempt++) {
+        await wait(SUBMIT_RETRY_MS);
+        result = await submitRush(run.runId, Math.min(scoreRef.current, RUSH_MAX_SCORE));
+      }
       if (cancelled) return;
-      if (!result) {
-        setErrorMessage("Couldn't save your score. Try another round.");
+      if ('error' in result) {
+        // The server keeps the run open for 2 minutes, so a network failure can still be re-sent
+        setErrorMessage(result.error === 'network'
+          ? "Couldn't save your score yet. Check your connection and try again; it's held for 2 minutes."
+          : 'This run took too long to finish, so the score could not be counted.');
+        setRetryAction(result.error === 'network' ? 'submit' : 'restart');
         setPhase('error');
         return;
       }
-      setStats(result);
-      setPhase('results');
+      setStats(result.stats);
+      setPhase('done');
       onScoreSavedRef.current();
     })();
     return () => {
@@ -124,8 +162,9 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
   }, [phase]);
 
   // A handle claimed from the results screen puts the player on the board: fetch their rank
+  const needsRank = phase === 'done' && hasProfile && stats?.todayScore != null && stats.rankToday == null;
   useEffect(() => {
-    if (phase !== 'results' || !hasProfile || stats?.rankToday != null) return;
+    if (!needsRank) return;
     let cancelled = false;
     fetchMyRushStats().then((fresh) => {
       if (!cancelled && fresh) setStats(fresh);
@@ -133,7 +172,7 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
     return () => {
       cancelled = true;
     };
-  }, [phase, hasProfile, stats?.rankToday]);
+  }, [needsRank]);
 
   useEffect(() => {
     if (isLocked || isCovered) return;
@@ -165,7 +204,7 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.8, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="relative w-full max-w-md max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="relative w-full max-w-md max-h-full overflow-y-auto overscroll-contain flex flex-col items-center gap-4 p-5 sm:p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
       >
         {!isLocked && (
           <button
@@ -182,14 +221,17 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
           Morning Rush
         </h2>
 
+        {phase === 'loading' && <p className="py-10 text-sm font-bold text-gray-500">Loading...</p>}
+
         {phase === 'ready' && (
           <>
-            <p className="text-sm font-bold text-gray-600">
-              Say good morning as many times as you can in {RUSH_SECONDS} seconds. Your best score each day goes on
-              the leaderboard. Upgrades don&apos;t count: just you and your thumbs.
-            </p>
-            <p className="text-xs font-bold text-gray-500">Resets at midnight Central.</p>
-            <PrimaryButton onClick={begin} autoFocus>Start</PrimaryButton>
+            <ol className="w-full flex flex-col gap-2 text-left text-sm font-bold">
+              <RuleStep n={1}>Tap the boss as many times as you can in {RUSH_SECONDS} seconds.</RuleStep>
+              <RuleStep n={2}>You get <span className="text-[#006b5b]">one shot per day</span>. No retries, so make it count.</RuleStep>
+              <RuleStep n={3}>Your score goes on today&apos;s leaderboard. Play daily to build a streak.</RuleStep>
+            </ol>
+            <p className="text-xs font-bold text-gray-500">Upgrades don&apos;t count. New Rush every day at midnight CT.</p>
+            <PrimaryButton onClick={begin} autoFocus>Start Today&apos;s Rush</PrimaryButton>
           </>
         )}
 
@@ -220,7 +262,7 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
               disabled={phase !== 'playing'}
               whileTap={{ scale: 0.92 }}
               aria-label="Say good morning"
-              className="my-2 w-56 h-56 sm:w-64 sm:h-64 rounded-full border-4 border-[#1A2E35] bg-[#F5A800] overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] select-none touch-manipulation cursor-pointer disabled:cursor-wait"
+              className="my-2 w-56 h-56 sm:w-64 sm:h-64 short:w-36 short:h-36 shrink-0 rounded-full border-4 border-[#1A2E35] bg-[#F5A800] overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] select-none touch-manipulation cursor-pointer disabled:cursor-wait"
             >
               <img src="/goodmorning.png" alt="" className="w-full h-full object-contain pointer-events-none select-none" draggable={false} />
             </motion.button>
@@ -228,32 +270,13 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
           </>
         )}
 
-        {phase === 'results' && stats && (
-          <>
-            <div>
-              <p className="text-xs font-black tracking-widest uppercase text-gray-600">Your score</p>
-              <div className="text-7xl font-black text-[#006b5b] tabular-nums">{score}</div>
-            </div>
-            <div className="w-full grid grid-cols-3 gap-2">
-              <Stat label="Best today" value={stats.bestToday} />
-              <Stat label="Rank today" value={stats.rankToday != null ? `#${stats.rankToday}` : '-'} />
-              <Stat label="Best ever" value={stats.bestAllTime} />
-            </div>
-
-            {hasProfile ? (
-              <PrimaryButton onClick={onShowLeaderboard}>
-                <Trophy className="w-5 h-5" /> See Leaderboard
-              </PrimaryButton>
-            ) : (
-              <>
-                <p className="text-sm font-bold text-gray-600">Your score is saved. Claim a handle to show up on the leaderboard.</p>
-                <PrimaryButton onClick={onClaimHandle}>
-                  <AtSign className="w-5 h-5" /> Claim Your Handle
-                </PrimaryButton>
-              </>
-            )}
-            <SecondaryButton onClick={begin}>Play Again</SecondaryButton>
-          </>
+        {phase === 'done' && stats && (
+          <TodayResult
+            stats={stats}
+            hasProfile={hasProfile}
+            onClaimHandle={onClaimHandle}
+            onShowLeaderboard={onShowLeaderboard}
+          />
         )}
 
         {phase === 'error' && (
@@ -261,7 +284,10 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
             <p role="alert" className="px-3 py-2 bg-red-50 border-2 border-red-500 text-red-700 text-sm font-bold">
               {errorMessage}
             </p>
-            <PrimaryButton onClick={begin}>Try Again</PrimaryButton>
+            {/* A restart re-calls start_rush, which hands back the same run if it was just created */}
+            <PrimaryButton onClick={retryAction === 'submit' ? () => setPhase('submitting') : begin}>
+              Try Again
+            </PrimaryButton>
           </>
         )}
       </motion.div>
@@ -269,34 +295,106 @@ export default memo(function MorningRush({ hasProfile, isCovered, onClaimHandle,
   );
 });
 
-function Stat({ label, value }: { label: string; value: number | string | null }) {
+// Today's score, when it was played (Central), rank, streak, sharing, and when the next Rush opens
+function TodayResult({ stats, hasProfile, onClaimHandle, onShowLeaderboard }: {
+  stats: RushStats;
+  hasProfile: boolean;
+  onClaimHandle: () => void;
+  onShowLeaderboard: () => void;
+}) {
+  const [nextIn, setNextIn] = useState(() => secondsUntilNextRush());
+  const [shareLabel, setShareLabel] = useState('Share');
+
+  useEffect(() => {
+    const interval = setInterval(() => setNextIn(secondsUntilNextRush()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const share = async () => {
+    const text = buildShareText(stats, `${window.location.origin}/goodmorning/game`);
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShareLabel('Copied!');
+    } catch {
+      // Share sheet dismissed, or clipboard blocked: nothing to do
+    }
+  };
+
+  const hours = Math.floor(nextIn / 3600);
+  const minutes = Math.floor((nextIn % 3600) / 60);
+  const seconds = nextIn % 60;
+
+  return (
+    <>
+      <div>
+        <p className="text-xs font-black tracking-widest uppercase text-gray-600">
+          {rushLabel(stats.playedAt ?? undefined)}
+          {stats.playedAt && <> · {formatCentralDate(stats.playedAt)}</>}
+        </p>
+        <div className="text-7xl font-black text-[#006b5b] tabular-nums">{stats.todayScore ?? '-'}</div>
+        <p className="text-xs font-bold text-gray-600">
+          {stats.todayScore == null
+            ? "Today's run didn't finish. Your next shot is tomorrow."
+            : <>good mornings{stats.playedAt && <> · played at {formatCentralTime(stats.playedAt)}</>}</>}
+        </p>
+      </div>
+
+      <div className="w-full grid grid-cols-3 gap-2">
+        <Stat label="Rank today" value={stats.rankToday != null ? `#${stats.rankToday}` : '-'} />
+        <Stat label="Streak" value={stats.currentStreak} icon={stats.currentStreak > 1} />
+        <Stat label="Best ever" value={stats.bestAllTime} />
+      </div>
+
+      {hasProfile ? (
+        <PrimaryButton onClick={onShowLeaderboard}>
+          <Trophy className="w-5 h-5" /> See Leaderboard
+        </PrimaryButton>
+      ) : (
+        <div className="w-full flex flex-col gap-2 p-3 border-2 border-dashed border-[#1A2E35] bg-[#fff8e6]">
+          <p className="text-sm font-bold">
+            {stats.todayScore != null ? 'Your score is saved, but nobody can see it yet.' : 'Get on the board tomorrow.'}{' '}
+            Claim a handle to show up on the leaderboard.
+          </p>
+          <PrimaryButton onClick={onClaimHandle}>
+            <AtSign className="w-5 h-5" /> Claim Your Handle
+          </PrimaryButton>
+        </div>
+      )}
+
+      {stats.todayScore != null && (
+        <SecondaryButton onClick={share}>
+          <Share2 className="w-4 h-4" /> {shareLabel}
+        </SecondaryButton>
+      )}
+
+      <p className="text-xs font-black tracking-widest uppercase text-gray-500 tabular-nums">
+        Next Rush in {hours}h {String(minutes).padStart(2, '0')}m {String(seconds).padStart(2, '0')}s
+      </p>
+    </>
+  );
+}
+
+function RuleStep({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3 items-start">
+      <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-[#F9CB66] border-2 border-[#1A2E35] text-xs font-black">{n}</span>
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function Stat({ label, value, icon }: { label: string; value: number | string | null; icon?: boolean }) {
   return (
     <div className="p-2 border-2 border-[#1A2E35] bg-[#f4f7f5]">
       <div className="text-[10px] font-black tracking-widest uppercase text-gray-600">{label}</div>
-      <div className="text-xl font-black tabular-nums">{value ?? '-'}</div>
+      <div className="text-xl font-black tabular-nums flex items-center justify-center gap-1">
+        {icon && <Flame className="w-4 h-4 text-orange-500" />}
+        {value ?? '-'}
+      </div>
     </div>
-  );
-}
-
-function PrimaryButton({ children, onClick, autoFocus }: { children: React.ReactNode; onClick: () => void; autoFocus?: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      autoFocus={autoFocus}
-      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] font-bold border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
-    >
-      {children}
-    </button>
-  );
-}
-
-function SecondaryButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full px-6 py-2 bg-white hover:bg-[#F9CB66] text-[#1A2E35] font-bold border-2 border-[#1A2E35] transition-colors touch-manipulation"
-    >
-      {children}
-    </button>
   );
 }
