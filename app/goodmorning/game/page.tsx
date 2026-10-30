@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft, AtSign } from 'lucide-react';
+import { Sun, Coffee, Mail, CircleDot, Newspaper, Users, ArrowLeft, AtSign, Timer, Trophy } from 'lucide-react';
 import { Montserrat } from 'next/font/google';
 import Link from 'next/link';
-import { usePlayer } from '@/lib/usePlayer';
+import { usePlayer, type Profile } from '@/lib/usePlayer';
 import ProfileModal from './ProfileModal';
+import MorningRush from './MorningRush';
+import Leaderboard from './Leaderboard';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
 
@@ -129,8 +131,39 @@ export default function GoodMorningClicker() {
   const [particles, setParticles] = useState<Particle[]>([]);
   const [rayCount, setRayCount] = useState(0); // Tracks the sun rays!
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isRushOpen, setIsRushOpen] = useState(false);
+  const [sidePanel, setSidePanel] = useState<'shop' | 'leaderboard'>('shop');
+  const [leaderboardVersion, setLeaderboardVersion] = useState(0); // Bumped to refetch the board
   const player = usePlayer();
+  const { saveProfile: savePlayerProfile } = player;
+
   const closeProfile = useCallback(() => setIsProfileOpen(false), []);
+  const openProfile = useCallback(() => setIsProfileOpen(true), []);
+  const openRush = useCallback(() => setIsRushOpen(true), []);
+  const closeRush = useCallback(() => setIsRushOpen(false), []);
+  const refreshLeaderboard = useCallback(() => setLeaderboardVersion((v) => v + 1), []);
+  const showLeaderboard = useCallback(() => {
+    setIsRushOpen(false);
+    setSidePanel('leaderboard');
+  }, []);
+
+  // While any modal is open, the game behind it can't be focused or clicked (keyboard,
+  // screen readers). Set directly on the DOM: the installed React types don't know `inert` yet.
+  const clickerPanelRef = useRef<HTMLDivElement>(null);
+  const sidePanelRef = useRef<HTMLDivElement>(null);
+  const isAnyModalOpen = isRushOpen || isProfileOpen || offlineReport !== null;
+  useEffect(() => {
+    for (const panel of [clickerPanelRef.current, sidePanelRef.current]) {
+      if (panel) panel.inert = isAnyModalOpen;
+    }
+  }, [isAnyModalOpen]);
+
+  // A new or changed handle changes what the leaderboard shows
+  const saveProfile = useCallback(async (input: Profile) => {
+    const error = await savePlayerProfile(input);
+    if (!error) refreshLeaderboard();
+    return error;
+  }, [savePlayerProfile, refreshLeaderboard]);
   const { mornings, inventory } = game;
 
   // --- DERIVED STATS (Math calculated automatically) ---
@@ -242,7 +275,7 @@ export default function GoodMorningClicker() {
     <main className={`h-[100dvh] w-full overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 flex flex-col lg:flex-row gap-4 md:gap-8 selection:bg-[#F9CB66]`}>
 
       {/* LEFT AREA: The Clicker Area (stays put) */}
-      <div className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
+      <div ref={clickerPanelRef} className="shrink-0 lg:flex-1 lg:min-h-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
         
         {/* Nav */}
         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20">
@@ -255,7 +288,7 @@ export default function GoodMorningClicker() {
         {player.isEnabled && player.isReady && (
           <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
             <button
-              onClick={() => setIsProfileOpen(true)}
+              onClick={openProfile}
               aria-label={player.profile ? `Edit player @${player.profile.handle}` : 'Claim your @handle'}
               className="flex items-center gap-1 px-2 py-1 border-2 border-[#1A2E35] bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
             >
@@ -276,8 +309,18 @@ export default function GoodMorningClicker() {
           <div className="text-4xl sm:text-6xl md:text-8xl font-black text-[#006b5b] drop-shadow-md break-all px-2">
             {Math.floor(mornings).toLocaleString()}
           </div>
-          <div className="text-sm sm:text-lg font-bold bg-[#F9CB66] border-2 border-[#1A2E35] inline-block px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35]">
-            {mps.toLocaleString()} / sec
+          <div className="flex items-center justify-center gap-2 sm:gap-3">
+            <div className="text-sm sm:text-lg font-bold bg-[#F9CB66] border-2 border-[#1A2E35] px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35]">
+              {mps.toLocaleString()} / sec
+            </div>
+            {player.isEnabled && (
+              <button
+                onClick={openRush}
+                className="flex items-center gap-1 text-sm sm:text-lg font-bold bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] border-2 border-[#1A2E35] px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
+              >
+                <Timer className="w-4 h-4 sm:w-5 sm:h-5" /> Rush
+              </button>
+            )}
           </div>
         </div>
 
@@ -325,13 +368,31 @@ export default function GoodMorningClicker() {
     </div>
 
       {/* RIGHT AREA: The Shop (fills the leftover height and scrolls on its own) */}
-      <div className="flex-1 min-h-0 lg:max-w-md w-full flex flex-col gap-3 sm:gap-4 border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-y-auto overscroll-contain">
-        <h2 className="text-xl sm:text-2xl font-extrabold uppercase border-b-4 border-[#1A2E35] pb-2 mb-2 flex items-center gap-2 sticky top-0 bg-white z-20">
-          <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] fill-current" />
-          The Daily Grind
-        </h2>
-        
-        {UPGRADES.map((upgrade) => {
+      <div ref={sidePanelRef} className="flex-1 min-h-0 lg:max-w-md w-full flex flex-col gap-3 sm:gap-4 border-2 border-[#1A2E35] bg-white p-4 sm:p-6 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-y-auto overscroll-contain">
+        {/* Panel header: a plain title, or Shop / Leaderboard tabs once accounts are on */}
+        <div className="border-b-4 border-[#1A2E35] pb-2 mb-2 flex items-center gap-4 sticky top-0 bg-white z-20">
+          {player.isEnabled ? (
+            <div role="tablist" aria-label="Side panel" className="flex items-center gap-4">
+              <PanelTab isActive={sidePanel === 'shop'} onClick={() => setSidePanel('shop')}>
+                <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] fill-current" /> The Daily Grind
+              </PanelTab>
+              <PanelTab isActive={sidePanel === 'leaderboard'} onClick={() => setSidePanel('leaderboard')}>
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66]" /> Leaderboard
+              </PanelTab>
+            </div>
+          ) : (
+            <h2 className="text-xl sm:text-2xl font-extrabold uppercase flex items-center gap-2">
+              <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] fill-current" />
+              The Daily Grind
+            </h2>
+          )}
+        </div>
+
+        {sidePanel === 'leaderboard' && player.isEnabled && (
+          <Leaderboard refreshKey={leaderboardVersion} onPlayRush={openRush} />
+        )}
+
+        {sidePanel === 'shop' && UPGRADES.map((upgrade) => {
           // Calculate the current cost based on how many you already own
           const cost = getCost(upgrade.baseCost, inventory[upgrade.id]);
           const canAfford = mornings >= cost;
@@ -357,10 +418,24 @@ export default function GoodMorningClicker() {
         )}
       </AnimatePresence>
 
-      {/* Create / edit the player's @handle and name */}
+      {/* 30-second Morning Rush for the leaderboard */}
+      <AnimatePresence>
+        {isRushOpen && (
+          <MorningRush
+            hasProfile={player.profile !== null}
+            isCovered={isProfileOpen}
+            onClaimHandle={openProfile}
+            onShowLeaderboard={showLeaderboard}
+            onScoreSaved={refreshLeaderboard}
+            onClose={closeRush}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create / edit the player's @handle and name (after Rush so it stacks on top of it) */}
       <AnimatePresence>
         {isProfileOpen && (
-          <ProfileModal profile={player.profile} onSave={player.saveProfile} onClose={closeProfile} />
+          <ProfileModal profile={player.profile} onSave={saveProfile} onClose={closeProfile} />
         )}
       </AnimatePresence>
     </main>
@@ -370,6 +445,21 @@ export default function GoodMorningClicker() {
 // ==========================================
 // 5. SUB-COMPONENTS (Clean code!)
 // ==========================================
+
+function PanelTab({ isActive, onClick, children }: { isActive: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      role="tab"
+      aria-selected={isActive}
+      onClick={onClick}
+      className={`flex items-center gap-2 text-sm sm:text-lg font-extrabold uppercase transition-colors touch-manipulation ${
+        isActive ? 'text-[#1A2E35]' : 'text-gray-400 hover:text-[#006b5b]'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 // memo: the passive-income tick re-renders the game several times a second; the rays only
 // need to re-render when a new one is added

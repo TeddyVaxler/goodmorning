@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, ensureSession } from '@/lib/supabase';
 
 export interface Profile {
   handle: string; // lowercase, no leading "@"
@@ -54,12 +54,8 @@ export function usePlayer() {
     const client = supabase;
     if (!client) return 'Player accounts are not set up yet.';
 
-    let { data: { session } } = await client.auth.getSession();
-    if (!session) {
-      const { data, error } = await client.auth.signInAnonymously();
-      if (error || !data.session) return 'Could not create your player. Try again.';
-      session = data.session;
-    }
+    const session = await ensureSession(client);
+    if (!session) return 'Could not create your player. Try again.';
 
     const { error } = await client.from('profiles').upsert({
       id: session.user.id,

@@ -3,7 +3,8 @@
 Player accounts are anonymous: no email or password. A player picks an @handle and enters a
 first and last name. Only the handle is public; names are readable by their owner alone.
 
-1. Run `migrations/20261029000000_create_profiles.sql` (SQL editor, or `supabase db push`).
+1. Run each file in `migrations/` in filename order (SQL editor, or `supabase db push`):
+   profiles first, then Morning Rush (scores and leaderboard).
 2. Authentication > Sign In / Providers: turn on **Allow anonymous sign-ins**.
 3. Authentication > Attack Protection: turn on CAPTCHA (Cloudflare Turnstile). Anonymous
    sign-ups are otherwise unlimited from any script.
