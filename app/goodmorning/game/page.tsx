@@ -83,6 +83,17 @@ export default function GoodMorningClicker() {
   const [leaderboardVersion, setLeaderboardVersion] = useState(0); // Bumped to refetch the board
   const player = usePlayer();
   const { saveProfile: savePlayerProfile } = player;
+  const [rayCount, setRayCount] = useState(0);
+  const [raysActive, setRaysActive] = useState(false);
+  const rayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const rayResetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rayTimeoutRef.current) clearTimeout(rayTimeoutRef.current);
+      if (rayResetTimeoutRef.current) clearTimeout(rayResetTimeoutRef.current);
+    };
+  }, []);
 
   // Refs let the long-running timers and the tap handler read fresh values without restarting
   const gameRef = useRef(game);
@@ -378,6 +389,30 @@ export default function GoodMorningClicker() {
       bestCombo: Math.max(prev.bestCombo, streak.count),
     }));
 
+
+    setGame((prev) => {
+      // ... keep existing combo/earnings logic
+      return {
+        ...prev,
+        // Ensure manualClicks is tracked here instead of totalTaps
+        manualClicks: prev.totalTaps + 1, 
+        // ...
+      };
+    });
+
+    // --- YOUR RAY LOGIC ---
+    setRayCount((prev) => (prev < 72 ? prev + 1 : prev));
+    setRaysActive(true);
+
+    if (rayTimeoutRef.current) clearTimeout(rayTimeoutRef.current);
+    if (rayResetTimeoutRef.current) clearTimeout(rayResetTimeoutRef.current);
+
+    rayTimeoutRef.current = setTimeout(() => {
+      setRaysActive(false);
+      rayResetTimeoutRef.current = setTimeout(() => {
+        setRayCount(0);
+      }, 3000); 
+    }, 5000);
     // Floating "+N" where the tap landed, and a bigger burst every 100 taps
     const rect = e.currentTarget.getBoundingClientRect();
     const added: Particle[] = [{ id: Date.now() + Math.random(), x: e.clientX - rect.left, y: e.clientY - rect.top, label: `+${formatNumber(value)}` }];
@@ -547,7 +582,7 @@ export default function GoodMorningClicker() {
         <div className="shrink-0 relative [container-type:size] [--boss:9rem] supports-[width:1cqh]:[--boss:min(20rem,calc((100cqh_-_1.25rem)/1.3),80cqw)] w-[var(--boss)] h-[var(--boss)] mt-[calc(var(--boss)*0.27)] touch-manipulation">
 
           {/* Sun rays fill in as the combo builds, and change color each tier */}
-          <SunRays count={Math.round(72 * Math.min(1, combo / 100))} color={rayColor} />
+          <SunRays color={rayColor} count={rayCount} isActive={raysActive}/>
 
           {/* The Clickable Button */}
           <motion.div
@@ -791,29 +826,47 @@ function PanelTab({ isActive, onClick, children }: { isActive: boolean; onClick:
 
 // memo: the passive-income tick re-renders the game several times a second; the rays only
 // need to re-render when the combo changes
-const SunRays = memo(function SunRays({ count, color }: { count: number; color: string }) {
+const SunRays = memo(function SunRays({ count, isActive, color }: { count: number; isActive: boolean; color: string }) {
+  const isMax = count >= 72;
+
   return (
     <motion.div
-    className="absolute inset-0 flex items-center justify-center pointer-events-none"
-    animate={{ rotate: 360 }}
-    transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+      initial={{ opacity: 0 }}
+      animate={{ 
+        rotate: 360,
+        opacity: isActive && count > 0 ? 1 : 0 
+      }}
+      transition={{ 
+        rotate: { duration: 30, repeat: Infinity, ease: "linear" },
+        opacity: { duration: isActive ? 0 : 3, ease: "easeInOut" } 
+      }}
     >
       {Array.from({ length: count }).map((_, i) => (
         <motion.div
           key={i}
           initial={{ height: '0%', opacity: 0 }}
-          animate={{ height: '150%', opacity: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 12 }} //stiffness is speed, damping
-          // Rotates each new ray by 5 degrees (360 / 72 = 5)
-          style={{ rotate: i * 5 , height: '150%', transformOrigin: 'center', background: color }}
-          className="absolute origin-center w-2 sm:w-3 rounded-full"
-          // The height makes the rays shoot outward past the container
+          animate={{ 
+            height: isActive ? (isMax ? '110%' : '75%') : '0%', 
+            opacity: isActive ? 1 : 0 
+          }}
+          transition={{ 
+            height: { duration: isActive ? 0.4 : 4.5, ease: "easeInOut" },
+            opacity: { duration: isActive ? 0 : 3, ease: "easeInOut" } 
+          }}
+          style={{ 
+            rotate: i * 5, 
+            transformOrigin: 'bottom center', 
+            background: isMax ? '#ffffff' : color 
+          }}
+          className={`absolute bottom-1/2 w-2 sm:w-3 rounded-full transition-colors duration-500 ${
+            isMax ? 'shadow-[0_0_12px_#F9CB66]' : ''
+          }`}
         />
       ))}
     </motion.div>
   );
 });
-
 function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose: () => void }) {
   // Escape closes the popup. Tab is held on the single button so focus can't reach the shop behind the overlay.
   useEffect(() => {
