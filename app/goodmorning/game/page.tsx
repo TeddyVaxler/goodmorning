@@ -306,7 +306,7 @@ export default function GoodMorningClicker() {
     <main className={`fixed inset-0 overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 short:p-3 flex flex-col lg:flex-row short:flex-row gap-4 md:gap-8 short:gap-4 selection:bg-[#F9CB66]`}>
 
       {/* LEFT AREA: The Clicker Area (stays put) */}
-      <div ref={clickerPanelRef} className="shrink-0 lg:flex-1 lg:min-h-0 short:flex-1 short:min-h-0 min-w-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 short:p-3 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
+      <div ref={clickerPanelRef} className="shrink min-h-0 lg:flex-1 short:flex-1 min-w-0 flex flex-col items-center border-2 border-[#1A2E35] bg-white p-4 sm:p-6 short:p-3 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden">
         
         {/* Nav */}
         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 short:top-3 short:left-3 z-20 flex items-center">
@@ -372,7 +372,7 @@ export default function GoodMorningClicker() {
         {/* The Clickable Sun/Boss */}
       {/* Boss size is capped by screen height so short phones still leave room for the shop */}
       <div className="flex-1 min-h-0 w-full flex items-center justify-center mt-2 sm:mt-8 short:mt-1 z-10 relative">
-        <div className="my-6 sm:my-8 short:my-3 relative w-[min(12rem,25dvh)] h-[min(12rem,25dvh)] sm:w-[min(16rem,30dvh)] sm:h-[min(16rem,30dvh)] md:w-[min(20rem,40dvh)] md:h-[min(20rem,40dvh)] short:w-[min(12rem,30dvh)] short:h-[min(12rem,30dvh)] touch-manipulation">
+        <div className="my-6 sm:my-8 short:my-3 relative w-36 h-36 sm:w-56 sm:h-56 md:w-72 md:h-72 short:w-28 short:h-28 supports-[height:1dvh]:w-[min(12rem,25dvh)] supports-[height:1dvh]:h-[min(12rem,25dvh)] sm:supports-[height:1dvh]:w-[min(16rem,30dvh)] sm:supports-[height:1dvh]:h-[min(16rem,30dvh)] md:supports-[height:1dvh]:w-[min(20rem,40dvh)] md:supports-[height:1dvh]:h-[min(20rem,40dvh)] short:supports-[height:1dvh]:w-[min(12rem,30dvh)] short:supports-[height:1dvh]:h-[min(12rem,30dvh)] touch-manipulation">
           
           {/* THE NEW SUN RAYS BACKGROUND */}
           <SunRays count={rayCount} />
@@ -414,7 +414,7 @@ export default function GoodMorningClicker() {
     </div>
 
       {/* RIGHT AREA: The Shop / Leaderboard. The header stays put; only the list below it scrolls. */}
-      <div ref={sidePanelRef} className="flex-1 min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-[#1A2E35] bg-white shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-hidden">
+      <div ref={sidePanelRef} className="flex-1 min-h-[45%] lg:min-h-0 short:min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-[#1A2E35] bg-white shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-hidden">
         {/* Panel header: a plain title, or Shop / Leaderboard tabs once accounts are on */}
         <div className="shrink-0 mx-4 mt-4 sm:mx-6 sm:mt-6 short:mx-3 short:mt-3 border-b-4 border-[#1A2E35] pb-2 flex items-center gap-4">
           {player.isEnabled ? (
