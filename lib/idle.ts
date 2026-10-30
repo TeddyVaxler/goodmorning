@@ -62,7 +62,7 @@ const sumEffects = (inventory: Inventory, type: Upgrade['type']) =>
 // Getting promoted resets mornings and upgrades for a permanent x2 on everything, per promotion
 export const JOB_TITLES = [
   'Intern', 'Associate', 'Senior Associate', 'Manager', 'Director', 'Vice President',
-  'Senior VP', 'Chief Operating Officer', 'CEO', 'Chairman of the Board',
+  'Senior VP', 'Chief Operating Officer', 'CEO', 'Chairman of the Board', 'Bezos', 'Elon',
 ];
 
 export const jobTitle = (promotions: number) =>
