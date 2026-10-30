@@ -10,13 +10,15 @@ export const RUSH_TIME_ZONE = 'America/Chicago';
 // Day #1 of the daily Rush, for the "Morning Rush #N" share text
 const RUSH_LAUNCH_DAY = '2026-10-30';
 
-export type LeaderboardPeriod = 'today' | 'all_time';
+export type LeaderboardPeriod = 'today' | 'week' | 'all_time';
 
 export interface LeaderboardRow {
   rank: number;
   handle: string;
   score: number;
   isMe: boolean;
+  badges: string[];
+  isChampion: boolean; // Last week's #1
 }
 
 export interface RushStats {
@@ -27,6 +29,9 @@ export interface RushStats {
   bestAllTime: number | null;
   currentStreak: number;
   daysPlayed: number;
+  freezesAvailable: number; // Streak freezes banked (1 per 7 days played, max 2)
+  streakNeedsFreeze: boolean; // Missed day(s) a freeze will cover when the player next plays
+  weekTotal: number; // This week's total, for the weekly league
 }
 
 interface RushStatsRow {
@@ -37,9 +42,13 @@ interface RushStatsRow {
   best_all_time: number | null;
   current_streak: number;
   days_played: number;
+  freezes_available: number;
+  streak_needs_freeze: boolean;
+  week_total: number;
 }
 
-export type StartRushResult = { runId: string } | { error: 'already_played' | 'failed' };
+// day: the server's Central date for the run, which decides the daily twist
+export type StartRushResult = { runId: string; day: string } | { error: 'already_played' | 'failed' };
 // 'rejected': the server refused the score (too late, impossible score), so retrying won't help
 export type SubmitRushResult = { stats: RushStats } | { error: 'network' | 'rejected' };
 
@@ -64,6 +73,9 @@ const toStats = (row: RushStatsRow): RushStats => ({
   bestAllTime: row.best_all_time,
   currentStreak: row.current_streak,
   daysPlayed: row.days_played,
+  freezesAvailable: row.freezes_available,
+  streakNeedsFreeze: row.streak_needs_freeze,
+  weekTotal: row.week_total ?? 0,
 });
 
 // Asks the server to start the clock on today's run. Each player gets one run per day.
@@ -73,7 +85,8 @@ export async function startRush(): Promise<StartRushResult> {
     if (!client || !(await ensureSession(client))) return null;
     const { data, error } = await client.rpc('start_rush');
     if (error) return { error: error.message.includes('already_played_today') ? 'already_played' : 'failed' };
-    return { runId: data as string };
+    const run = (data as { run_id: string; run_day: string }[])[0];
+    return { runId: run.run_id, day: run.run_day };
   });
   return result ?? { error: 'failed' };
 }
@@ -113,13 +126,61 @@ export function fetchLeaderboard(period: LeaderboardPeriod): Promise<Leaderboard
     if (!client) return null;
     const { data, error } = await client.rpc('get_rush_leaderboard', { period });
     if (error) return null;
-    return (data as { rank: number; handle: string; score: number; is_me: boolean }[]).map((row) => ({
+    return (data as { rank: number; handle: string; score: number; is_me: boolean; badges: string[]; is_champion: boolean }[]).map((row) => ({
       rank: row.rank,
       handle: row.handle,
       score: row.score,
       isMe: row.is_me,
+      badges: row.badges ?? [],
+      isChampion: row.is_champion,
     }));
   });
+}
+
+// Reports earned idle-game achievement ids for the signed-in player's profile and returns the
+// profile's full badge list, Rush badges included (the server works those out from real scores).
+// Null without a session or on failure.
+export function syncBadges(ids: string[]) {
+  return settle(async () => {
+    const client = supabase;
+    if (!client) return null;
+    const { data: { session } } = await client.auth.getSession();
+    if (!session) return null;
+    const { data, error } = await client.rpc('set_my_badges', { badge_ids: ids });
+    return error ? null : (data as string[]);
+  });
+}
+
+// --- Daily twists ---
+// Each weekday's Rush has a rule that changes how it plays, not how it's scored, so the
+// leaderboard stays comparable. Weekends are classic.
+
+export type RushTwistId = 'classic' | 'moving' | 'tiny' | 'decoys' | 'blink' | 'shrink';
+
+export interface RushTwist {
+  id: RushTwistId;
+  name: string;
+  description: string;
+}
+
+const TWISTS: Record<RushTwistId, RushTwist> = {
+  classic: { id: 'classic', name: 'Classic Rush', description: 'Just you, the boss, and 30 seconds.' },
+  moving: { id: 'moving', name: 'Moving Monday', description: 'The boss won’t sit still. Chase him.' },
+  tiny: { id: 'tiny', name: 'Tiny Tuesday', description: 'The boss is half size. Aim carefully.' },
+  decoys: { id: 'decoys', name: 'Decoy Wednesday', description: 'Impostors show up. Tapping one costs you 3.' },
+  blink: { id: 'blink', name: 'Blink Thursday', description: 'The boss keeps vanishing. Taps on thin air don’t count.' },
+  shrink: { id: 'shrink', name: 'Shrinking Friday', description: 'The boss shrinks as the clock runs down.' },
+};
+
+// Sunday = 0 ... Saturday = 6
+const TWIST_BY_WEEKDAY: RushTwistId[] = ['classic', 'moving', 'tiny', 'decoys', 'blink', 'shrink', 'classic'];
+
+// The twist for an instant (by its Central date), or for a 'YYYY-MM-DD' day from the server
+export function rushTwist(at: Date | string = new Date()) {
+  const weekday = typeof at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(at)
+    ? new Date(`${at}T12:00:00Z`).getUTCDay()
+    : new Date(centralWallTime(new Date(at).getTime())).getUTCDay();
+  return TWISTS[TWIST_BY_WEEKDAY[weekday]];
 }
 
 // --- Central time helpers ---
@@ -171,7 +232,10 @@ export function secondsUntilNextRush(now = Date.now()) {
 
 // Wordle-style result to paste into a group chat
 export function buildShareText(stats: RushStats, url: string) {
-  const lines = [`Good Morning ${rushLabel(stats.playedAt ?? undefined)}`, `${stats.todayScore ?? 0} good mornings in ${RUSH_SECONDS}s`];
+  const lines = [
+    `Good Morning ${rushLabel(stats.playedAt ?? undefined)} (${rushTwist(stats.playedAt ?? undefined).name})`,
+    `${stats.todayScore ?? 0} good mornings in ${RUSH_SECONDS}s`,
+  ];
   if (stats.rankToday != null) lines.push(`#${stats.rankToday} today`);
   if (stats.currentStreak > 1) lines.push(`${stats.currentStreak}-day streak`);
   lines.push(url);

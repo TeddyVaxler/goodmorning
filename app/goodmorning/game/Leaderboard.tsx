@@ -9,6 +9,7 @@ import {
   type LeaderboardRow,
   type RushStats,
 } from '@/lib/rush';
+import { topBadges } from '@/lib/achievements';
 
 interface LeaderboardProps {
   refreshKey: number; // Bump to refetch, e.g. after a Rush or a handle change
@@ -19,6 +20,7 @@ interface LeaderboardProps {
 
 const PERIODS: { id: LeaderboardPeriod; label: string }[] = [
   { id: 'today', label: 'Today' },
+  { id: 'week', label: 'This Week' },
   { id: 'all_time', label: 'All-time' },
 ];
 
@@ -49,7 +51,9 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
     };
   }, [period, refreshKey]);
 
-  const myBest = period === 'today' ? myStats?.todayScore : myStats?.bestAllTime;
+  const myBest = period === 'today'
+    ? myStats?.todayScore
+    : period === 'week' ? (myStats?.weekTotal || null) : myStats?.bestAllTime;
 
   return (
     <div className="flex flex-col gap-3">
@@ -60,7 +64,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
             role="tab"
             aria-selected={period === id}
             onClick={() => changePeriod(id)}
-            className={`flex-1 py-2 text-xs sm:text-sm font-black uppercase tracking-widest transition-colors touch-manipulation ${
+            className={`flex-1 py-2 px-1 whitespace-nowrap text-[11px] sm:text-sm font-black uppercase tracking-wide transition-colors touch-manipulation ${
               period === id ? 'bg-[#1A2E35] text-white' : 'bg-white hover:bg-[#F9CB66]'
             }`}
           >
@@ -77,7 +81,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
 
       {rows && !hasFailed && rows.length === 0 && (
         <p className="py-6 text-center text-sm font-bold text-gray-500">
-          No scores {period === 'today' ? 'yet today' : 'yet'}. Play a Morning Rush to take #1.
+          No scores {period === 'today' ? 'yet today' : period === 'week' ? 'yet this week' : 'yet'}. Play a Morning Rush to take #1.
         </p>
       )}
 
@@ -91,9 +95,15 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
               }`}
             >
               <span className="w-8 text-lg font-black tabular-nums">#{row.rank}</span>
-              <span className="flex-1 min-w-0 truncate font-bold">
-                @{row.handle}
-                {row.isMe && <span className="ml-1 text-xs font-black text-[#006b5b]">(you)</span>}
+              <span className="flex-1 min-w-0 flex items-center gap-1">
+                {row.isChampion && <span title="Last week's champion" aria-label="Last week's champion">👑</span>}
+                <span className="truncate font-bold">@{row.handle}</span>
+                {row.isMe && <span className="shrink-0 text-xs font-black text-[#006b5b]">(you)</span>}
+                <span className="shrink-0 ml-auto pl-1 text-sm leading-none" aria-label="Top badges">
+                  {topBadges(row.badges).map((b) => (
+                    <span key={b.id} title={b.name}>{b.emoji}</span>
+                  ))}
+                </span>
               </span>
               <span className="text-lg font-black text-[#006b5b] tabular-nums">{row.score}</span>
             </li>
@@ -104,7 +114,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
       <div className="mt-1 flex items-center justify-between gap-3 p-3 border-2 border-dashed border-[#1A2E35] bg-[#f4f7f5]">
         <span className="text-xs sm:text-sm font-bold">
           {myBest != null ? (
-            <>Your {period === 'today' ? 'score today' : 'best ever'}: <span className="font-black text-[#006b5b]">{myBest}</span></>
+            <>Your {period === 'today' ? 'score today' : period === 'week' ? 'week total' : 'best ever'}: <span className="font-black text-[#006b5b]">{myBest}</span></>
           ) : (
             period === 'today' && myStats?.playedToday ? "Today's run didn't finish" : 'No score yet'
           )}

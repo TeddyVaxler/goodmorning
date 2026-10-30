@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { BriefcaseBusiness, X } from 'lucide-react';
+import Modal from './Modal';
+import { BriefcaseBusiness } from 'lucide-react';
 import { jobTitle, promotionMultiplier, type GameState } from '@/lib/idle';
 import { PrimaryButton, SecondaryButton } from './buttons';
 
@@ -14,38 +13,11 @@ interface PromotionModalProps {
 
 // Prestige: trade this job's mornings and upgrades for a permanent x2 and a new title
 export default function PromotionModal({ game, onPromote, onClose }: PromotionModalProps) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
   const next = game.promotions + 1;
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/60 p-4"
-    >
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="promotion-title"
-        initial={{ scale: 0.8, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.8, y: 20 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-sm max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
-      >
-        <button onClick={onClose} aria-label="Not yet" className="absolute top-3 right-3 p-1 hover:text-[#006b5b] touch-manipulation">
-          <X className="w-6 h-6" />
-        </button>
+    <Modal labelledBy="promotion-title" onClose={onClose} closeLabel="Not yet" size="sm">
+      <div className="flex flex-col items-center gap-4 text-center">
         <div className="p-4 bg-[#F9CB66] border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#1A2E35]">
           <BriefcaseBusiness className="w-10 h-10" />
         </div>
@@ -70,7 +42,7 @@ export default function PromotionModal({ game, onPromote, onClose }: PromotionMo
 
         <PrimaryButton onClick={onPromote} autoFocus>Accept the Promotion</PrimaryButton>
         <SecondaryButton onClick={onClose}>Not Yet</SecondaryButton>
-      </motion.div>
-    </motion.div>
+      </div>
+    </Modal>
   );
 }

@@ -86,6 +86,14 @@ export function playComboUp(level: number) {
   note(ctx, 900 + level * 120, 0.07, 0.14, 0.08, 'square');
 }
 
+// Wrong target (a Rush decoy): a low buzz
+export function playMiss() {
+  vibrate([40, 30, 40]);
+  const ctx = audio();
+  if (!ctx) return;
+  note(ctx, 160, 0, 0.18, 0.12, 'sawtooth');
+}
+
 // Golden Sun caught: a shimmering chime
 export function playGolden() {
   vibrate([30, 40, 30, 40, 60]);

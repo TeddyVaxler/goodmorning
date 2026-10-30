@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sun, ArrowLeft, AtSign, Timer, Trophy, CircleHelp, Palette, Volume2, VolumeX, BriefcaseBusiness, Lock, Sparkles } from 'lucide-react';
+import { Sun, ArrowLeft, AtSign, Timer, Trophy, CircleHelp, Palette, Volume2, VolumeX, BriefcaseBusiness, Lock, Sparkles, Medal } from 'lucide-react';
 import { Montserrat } from 'next/font/google';
 import Link from 'next/link';
 import { usePlayer, type Profile } from '@/lib/usePlayer';
@@ -21,7 +21,10 @@ import GoldenSun from './GoldenSun';
 import WardrobeModal from './WardrobeModal';
 import PromotionModal from './PromotionModal';
 import BossHat, { seasonFor, type Season } from './BossHat';
+import AchievementsModal from './AchievementsModal';
 import { PrimaryButton } from './buttons';
+import { fetchMyRushStats, syncBadges, type RushStats } from '@/lib/rush';
+import { achievementById, newlyEarned } from '@/lib/achievements';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
 
@@ -74,6 +77,8 @@ export default function GoodMorningClicker() {
   const [isWalkthroughOpen, setIsWalkthroughOpen] = useState(false);
   const [isWardrobeOpen, setIsWardrobeOpen] = useState(false);
   const [isPromotionOpen, setIsPromotionOpen] = useState(false);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [myRush, setMyRush] = useState<RushStats | null>(null); // For Rush-based achievements
   const [sidePanel, setSidePanel] = useState<'shop' | 'leaderboard'>('shop');
   const [leaderboardVersion, setLeaderboardVersion] = useState(0); // Bumped to refetch the board
   const player = usePlayer();
@@ -102,6 +107,8 @@ export default function GoodMorningClicker() {
   const openWardrobe = useCallback(() => setIsWardrobeOpen(true), []);
   const closeWardrobe = useCallback(() => setIsWardrobeOpen(false), []);
   const closePromotion = useCallback(() => setIsPromotionOpen(false), []);
+  const openAchievements = useCallback(() => setIsAchievementsOpen(true), []);
+  const closeAchievements = useCallback(() => setIsAchievementsOpen(false), []);
   const refreshLeaderboard = useCallback(() => setLeaderboardVersion((v) => v + 1), []);
   const openWalkthrough = useCallback(() => setIsWalkthroughOpen(true), []);
   const closeWalkthrough = useCallback(() => {
@@ -125,7 +132,7 @@ export default function GoodMorningClicker() {
   // screen readers). Set directly on the DOM: the installed React types don't know `inert` yet.
   const clickerPanelRef = useRef<HTMLDivElement>(null);
   const sidePanelRef = useRef<HTMLDivElement>(null);
-  const isAnyModalOpen = isRushOpen || isProfileOpen || isWalkthroughOpen || isWardrobeOpen || isPromotionOpen || offlineReport !== null;
+  const isAnyModalOpen = isRushOpen || isProfileOpen || isWalkthroughOpen || isWardrobeOpen || isPromotionOpen || isAchievementsOpen || offlineReport !== null;
   const isAnyModalOpenRef = useRef(isAnyModalOpen);
   useEffect(() => {
     isAnyModalOpenRef.current = isAnyModalOpen;
@@ -202,7 +209,8 @@ export default function GoodMorningClicker() {
       const other = parseSave(e.newValue, { allowLegacy: false });
       if (other) {
         const { savedAt: _savedAt, ...state } = other;
-        setGame(state);
+        // Keep achievements earned here that the other tab hasn't saved yet
+        setGame((prev) => ({ ...state, achievements: [...new Set([...state.achievements, ...prev.achievements])] }));
       }
     };
 
@@ -290,6 +298,62 @@ export default function GoodMorningClicker() {
     if (revealed.length > seen.upgrades) addToast(`New upgrade: ${newestUpgradeName}`);
     if (unlockedSkinCount > seen.skins || revealed.length > seen.upgrades) playUnlock();
   }, [hasLoaded, revealed.length, unlockedSkinCount, newestUpgradeName, addToast]);
+
+  // --- ACHIEVEMENTS ---
+  // The player's Rush stats feed the Rush achievements; refetched whenever a Rush or handle changes
+  useEffect(() => {
+    if (!player.isReady || !player.isEnabled) return;
+    let cancelled = false;
+    fetchMyRushStats().then((stats) => {
+      if (!cancelled && stats) setMyRush(stats);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [player.isReady, player.isEnabled, leaderboardVersion]);
+
+  const earnedNow = hasLoaded ? newlyEarned(game, myRush, game.achievements) : [];
+  const earnedKey = earnedNow.join(',');
+  useEffect(() => {
+    if (!earnedKey) return;
+    const ids = earnedKey.split(',');
+    setGame((prev) => ({ ...prev, achievements: [...prev.achievements, ...ids.filter((id) => !prev.achievements.includes(id))] }));
+    playUnlock();
+    for (const id of ids.slice(0, 2)) {
+      const a = achievementById(id);
+      if (a) addToast(`${a.emoji} Achievement: ${a.name}`);
+    }
+  }, [earnedKey, addToast]);
+
+  // Earned badges go to the player's profile so they show on the leaderboard. The server's list
+  // also has Rush badges it worked out itself (like Podium), so the two lists are merged for display.
+  const [profileBadges, setProfileBadges] = useState<string[] | null>(null);
+  const unsynced = player.profile && profileBadges !== null
+    ? game.achievements.filter((id) => !profileBadges.includes(id))
+    : [];
+  const unsyncedKey = unsynced.join(',');
+  const hasProfile = player.profile !== null;
+  useEffect(() => {
+    // Once per profile: learn what the server has (and let it add verified Rush badges)
+    if (!hasProfile) return;
+    let cancelled = false;
+    syncBadges(gameRef.current.achievements).then((badges) => {
+      if (!cancelled && badges) setProfileBadges(badges);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasProfile]);
+  useEffect(() => {
+    // After that, only when there's something the server doesn't have yet
+    if (!unsyncedKey) return;
+    syncBadges(unsyncedKey.split(',')).then((badges) => {
+      if (!badges) return;
+      setProfileBadges(badges);
+      refreshLeaderboard();
+    });
+  }, [unsyncedKey, refreshLeaderboard]);
+  const allBadges = profileBadges ? [...new Set([...game.achievements, ...profileBadges])] : game.achievements;
 
   // --- ACTIONS ---
   const handleBossClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -544,13 +608,22 @@ export default function GoodMorningClicker() {
         >
           {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
-        <button
-          onClick={openWardrobe}
-          aria-label="Boss wardrobe"
-          className="absolute bottom-3 right-3 z-20 p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
-        >
-          <Palette className="w-5 h-5" />
-        </button>
+        <div className="absolute bottom-3 right-3 z-20 flex items-center">
+          <button
+            onClick={openAchievements}
+            aria-label={`Achievements (${allBadges.length} earned)`}
+            className="p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+          >
+            <Medal className="w-5 h-5" />
+          </button>
+          <button
+            onClick={openWardrobe}
+            aria-label="Boss wardrobe"
+            className="p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+          >
+            <Palette className="w-5 h-5" />
+          </button>
+        </div>
 
         {/* Golden Sun */}
         <AnimatePresence>
@@ -664,6 +737,12 @@ export default function GoodMorningClicker() {
 
       <AnimatePresence>
         {isPromotionOpen && <PromotionModal game={game} onPromote={acceptPromotion} onClose={closePromotion} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAchievementsOpen && (
+          <AchievementsModal earned={allBadges} hasProfile={player.profile !== null} onClose={closeAchievements} />
+        )}
       </AnimatePresence>
 
       {/* Once-a-day, 30-second Morning Rush for the leaderboard */}

@@ -142,6 +142,7 @@ export interface GameState {
   goldenSunsCaught: number;
   skin: string;
   hideSeasonalHat: boolean;
+  achievements: string[]; // Earned achievement ids (see lib/achievements.ts)
 }
 
 export const NEW_GAME: GameState = {
@@ -155,6 +156,7 @@ export const NEW_GAME: GameState = {
   goldenSunsCaught: 0,
   skin: 'classic',
   hideSeasonalHat: false,
+  achievements: [],
 };
 
 export const getClickPower = (game: GameState) =>
@@ -221,6 +223,7 @@ export function parseSave(raw: string, { allowLegacy = true } = {}): SavedGame |
       goldenSunsCaught: countOr(data.goldenSunsCaught, 0),
       skin: typeof data.skin === 'string' ? data.skin : 'classic',
       hideSeasonalHat: data.hideSeasonalHat === true,
+      achievements: Array.isArray(data.achievements) ? data.achievements.filter((id: unknown) => typeof id === 'string') : [],
       savedAt: data.savedAt,
     };
   } catch {

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Palette, Lock, X, Volume2, VolumeX } from 'lucide-react';
+import Modal from './Modal';
+import { Palette, Lock, Volume2, VolumeX } from 'lucide-react';
 import { BOSS_SKINS, formatNumber, type GameState } from '@/lib/idle';
 import BossHat, { SEASON_NAMES, type Season } from './BossHat';
 
@@ -18,36 +17,8 @@ interface WardrobeModalProps {
 
 // Pick a boss skin (unlocked by all-time mornings), the seasonal hat, and sound
 export default function WardrobeModal({ game, season, isMuted, onSelectSkin, onToggleHat, onToggleMute, onClose }: WardrobeModalProps) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/60 p-4"
-    >
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="wardrobe-title"
-        initial={{ scale: 0.8, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.8, y: 20 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md max-h-full overflow-y-auto overscroll-contain flex flex-col gap-4 p-5 sm:p-6 bg-white border-2 border-[#1A2E35] shadow-[8px_8px_0px_0px_#1A2E35]"
-      >
-        <button onClick={onClose} aria-label="Close wardrobe" className="absolute top-3 right-3 p-1 hover:text-[#006b5b] touch-manipulation">
-          <X className="w-6 h-6" />
-        </button>
+    <Modal labelledBy="wardrobe-title" onClose={onClose} closeLabel="Close wardrobe" size="md">
         <h2 id="wardrobe-title" className="text-2xl font-extrabold uppercase tracking-tighter flex items-center gap-2">
           <Palette className="w-6 h-6 text-[#006b5b]" /> Boss Wardrobe
         </h2>
@@ -102,7 +73,6 @@ export default function WardrobeModal({ game, season, isMuted, onSelectSkin, onT
           </span>
           <span className="font-black">{isMuted ? 'Off' : 'On'}</span>
         </button>
-      </motion.div>
-    </motion.div>
+    </Modal>
   );
 }

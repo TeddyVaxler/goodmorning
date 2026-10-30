@@ -14,12 +14,14 @@ import {
   formatCentralDate,
   rushLabel,
   secondsUntilNextRush,
+  rushTwist,
   buildShareText,
   type RushStats,
 } from '@/lib/rush';
 import { PrimaryButton, SecondaryButton } from './buttons';
 import BossHat, { seasonFor } from './BossHat';
-import { playTap, playMilestone } from '@/lib/sfx';
+import { playTap, playMilestone, playMiss } from '@/lib/sfx';
+import RushField from './RushField';
 
 type Phase = 'loading' | 'ready' | 'countdown' | 'playing' | 'submitting' | 'done' | 'error';
 
@@ -103,6 +105,7 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
       const run = await runRef.current;
       if (cancelled || !run) return;
       if ('runId' in run) {
+        setTwist(rushTwist(run.day));
         setPhase('playing');
       } else if (run.error === 'already_played') {
         setPhase('loading'); // Shows today's result
@@ -195,6 +198,18 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
     else playTap(Math.min(5, 1 + Math.floor(scoreRef.current / 50)));
   };
 
+  // Decoy Wednesday: tapping an impostor costs 3
+  const handleDecoy = () => {
+    if (phase !== 'playing') return;
+    scoreRef.current = Math.max(0, scoreRef.current - 3);
+    setScore(scoreRef.current);
+    playMiss();
+  };
+
+  // The ready screen previews today's twist from this device's clock; the run itself plays the
+  // twist for the day the server filed it under (set when the run starts)
+  const [twist, setTwist] = useState(() => rushTwist());
+
   // Seasonal hat on the Rush boss too (read once; the modal never stays open across seasons)
   const [currentSeason] = useState(() => seasonFor());
   const season = showHat ? currentSeason : null;
@@ -235,6 +250,16 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
 
         {phase === 'ready' && (
           <>
+            <div className="w-full p-3 border-2 border-[#1A2E35] bg-[#fff8e6] text-left">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Today&apos;s twist</p>
+              <p className="text-lg font-black">{twist.name}</p>
+              <p className="text-xs font-bold text-gray-600">{twist.description}</p>
+            </div>
+            {stats?.streakNeedsFreeze && (
+              <p className="w-full px-3 py-2 border-2 border-[#1A2E35] bg-[#e0f2fe] text-xs font-bold text-left">
+                🧊 You missed a day, but a streak freeze will save your {stats.currentStreak}-day streak when you play.
+              </p>
+            )}
             <ol className="w-full flex flex-col gap-2 text-left text-sm font-bold">
               <RuleStep n={1}>Tap the boss as many times as you can in {RUSH_SECONDS} seconds.</RuleStep>
               <RuleStep n={2}>You get <span className="text-[#006b5b]">one shot per day</span>. No retries, so make it count.</RuleStep>
@@ -265,21 +290,14 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
             <div className="w-full h-3 border-2 border-[#1A2E35] bg-gray-100">
               <div className="h-full bg-[#F9CB66]" style={{ width: `${(timeLeft / RUSH_SECONDS) * 100}%` }} />
             </div>
-            {/* The hat sits in the same box as the boss so it lines up at every size */}
-            <div className="relative my-2 shrink-0 w-56 h-56 sm:w-64 sm:h-64 short:w-36 short:h-36">
-              <motion.button
-                onClick={handleBossClick}
-                // Holding Enter auto-repeats clicks; only fresh key presses count
-                onKeyDown={(e) => e.repeat && e.preventDefault()}
-                disabled={phase !== 'playing'}
-                whileTap={{ scale: 0.92 }}
-                aria-label="Say good morning"
-                className="w-full h-full rounded-full border-4 border-[#1A2E35] bg-[#F5A800] overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] select-none touch-manipulation cursor-pointer disabled:cursor-wait"
-              >
-                <img src="/goodmorning.png" alt="" className="w-full h-full object-contain pointer-events-none select-none" draggable={false} />
-              </motion.button>
-              {season && <BossHat season={season} />}
-            </div>
+            <RushField
+              twist={twist}
+              isPlaying={phase === 'playing'}
+              timeLeft={timeLeft}
+              season={season}
+              onHit={handleBossClick}
+              onDecoy={handleDecoy}
+            />
             {phase === 'submitting' && <p className="text-sm font-bold text-gray-600">Saving your score...</p>}
           </>
         )}
@@ -383,6 +401,12 @@ function TodayResult({ stats, hasProfile, onClaimHandle, onShowLeaderboard }: {
         <SecondaryButton onClick={share}>
           <Share2 className="w-4 h-4" /> {shareLabel}
         </SecondaryButton>
+      )}
+
+      {stats.freezesAvailable > 0 && (
+        <p className="text-xs font-bold text-gray-600">
+          🧊 {stats.freezesAvailable} streak freeze{stats.freezesAvailable > 1 ? 's' : ''} banked: miss a day and your streak is safe.
+        </p>
       )}
 
       <p className="text-xs font-black tracking-widest uppercase text-gray-500 tabular-nums">
