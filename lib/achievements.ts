@@ -21,7 +21,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'office_party', emoji: '🎉', name: 'Office Party', description: 'Buy at least 1 of every upgrade.', isEarned: (g) => UPGRADES.every((u) => (g.inventory[u.id] ?? 0) >= 1) },
   { id: 'first_tap', emoji: '👋', name: 'Good Morning!', description: 'Tap the boss once.', isEarned: (g) => g.totalTaps >= 1 },
   { id: 'rush_first', emoji: '⏱️', name: 'First Rush', description: 'Finish a Morning Rush.', isEarned: (_g, r) => (r?.daysPlayed ?? 0) >= 1 },
-  { id: 'taps_1k', emoji: '🥳', name: "David's Birthday", description: 'Tap 1,203 times.', isEarned: (g) => g.totalTaps >= 1203 },
+  { id: 'davids_bday', emoji: '🥳', name: "David's Birthday", description: 'Tap 1,203 times.', isEarned: (g) => g.totalTaps >= 1203 },
   { id: 'taps_1k', emoji: '👆', name: 'Working Hard', description: 'Tap 1,000 times.', isEarned: (g) => g.totalTaps >= 1000 },
   { id: 'combo_25', emoji: '🔥', name: 'On a Roll', description: 'Reach a 25-tap combo.', isEarned: (g) => g.bestCombo >= 25 },
   { id: 'golden_1', emoji: '🌞', name: 'Golden Hour', description: 'Catch a Golden Sun.', isEarned: (g) => g.goldenSunsCaught >= 1 },
