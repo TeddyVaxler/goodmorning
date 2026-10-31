@@ -39,11 +39,11 @@ export default function BossJokePage() {
           </Link>
 
           <Link 
-            href="/sunrise"
+            href="/sunshine"
             className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-white hover:bg-[#F9CB66] text-[#1A2E35] font-bold border-2 border-[#1A2E35] text-lg sm:text-xl transition-colors cursor-pointer shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
           >
             <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] group-hover:text-[#1A2E35] group-hover:rotate-45 transition-transform shrink-0" />
-            PLAY SUNRISE PUZZLE
+            PLAY SUNSHINE PUZZLE
           </Link>
         </div>
 
