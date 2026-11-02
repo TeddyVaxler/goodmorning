@@ -6,3 +6,6 @@ build
 .env*.local
 .DS_Store
 *.tsbuildinfo
+
+# Morning Word answers live only in the database (scripts/seed-morning-word.mjs)
+scripts/morning-word-answers.txt

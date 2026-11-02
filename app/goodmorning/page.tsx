@@ -45,6 +45,17 @@ export default function BossJokePage() {
             <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] group-hover:text-[#1A2E35] group-hover:rotate-45 transition-transform shrink-0" />
             PLAY SUNSHINE PUZZLE
           </Link>
+
+          <Link 
+            href="/word"
+            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-white hover:bg-[#F9CB66] text-[#1A2E35] font-bold border-2 border-[#1A2E35] text-lg sm:text-xl transition-colors cursor-pointer shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
+          >
+            <span className="grid grid-cols-2 gap-0.5 shrink-0" aria-hidden="true">
+              <span className="w-2.5 h-2.5 bg-[#006b5b]" /><span className="w-2.5 h-2.5 bg-[#F9CB66]" />
+              <span className="w-2.5 h-2.5 bg-gray-400" /><span className="w-2.5 h-2.5 bg-[#006b5b]" />
+            </span>
+            PLAY MORNING WORD
+          </Link>
         </div>
 
         <button 
