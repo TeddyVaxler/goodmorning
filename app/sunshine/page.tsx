@@ -9,36 +9,9 @@ import { Trophy, Info, Sun, AlertCircle, AtSign, ArrowLeft } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion';
 import Leaderboard from './Leaderboard';
 import ProfileModal from '../goodmorning/game/ProfileModal';
+import { generateBoard, targetWords, scoreWord, decodeRings, type SunshineBoard } from '@/lib/sunshine';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
-
-// --- Seeded PRNG ---
-function xmur3(str: string) {
-  let h = 1779033703 ^ str.length;
-  for (let i = 0; i < str.length; i++) {
-    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
-    h = (h << 13) | (h >>> 19);
-  }
-  return function () {
-    h = Math.imul(h ^ (h >>> 16), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return (h ^= h >>> 16) >>> 0;
-  };
-}
-
-function mulberry32(a: number) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const SCRABBLE_SCORES: Record<string, number> = {
-  A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3,
-  N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10
-};
 
 const FALLBACK_WORDS = [
   "EERIE", "GOUDA", "WAVY", "EARL", "HAVE", "SUNNY", "SOLAR", "LIGHT", "SHINE", "WARM",
@@ -82,6 +55,7 @@ export default function SunriseGame() {
   const [foundWords, setFoundWords] = useState<string[]>([]);
   const [localScore, setLocalScore] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [rejectedWords, setRejectedWords] = useState<string[]>([]); // Found here, turned down by the server
   const [errorMessage, setErrorMessage] = useState("");
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -107,18 +81,13 @@ export default function SunriseGame() {
           throw new Error(`HTTP ${res.status}: /custom-dictionary.json not found in public folder`);
         }
 
-        const words: string[] = await res.json();
-        const upperWords = words.map((w) => w.trim().toUpperCase());
-        const wordSet = new Set(upperWords);
+        const words = targetWords(await res.json());
 
-        wordSet.add('GOUDA');
-        wordSet.add('EERIE');
-
-        console.log(`[Sunrise] Loaded ${wordSet.size} words from /custom-dictionary.json`);
+        console.log(`[Sunrise] Loaded ${words.length} words from /custom-dictionary.json`);
 
         if (isMounted) {
-          setDictionary(wordSet);
-          setValidTargets(Array.from(wordSet));
+          setDictionary(new Set(words));
+          setValidTargets(words);
           setIsDictionaryLoaded(true);
         }
       } catch (err) {
@@ -160,78 +129,41 @@ export default function SunriseGame() {
     loadHistory();
   }, [profile, selectedDate]);
 
-  // 3. Deterministic Board Generation
+  // 3. Load the day's board. The server's copy is what scores are checked against;
+  // generating it locally is only a fallback for when there's no database to ask.
+  const [serverBoard, setServerBoard] = useState<{ date: string; board: SunshineBoard | null } | null>(null);
+
   useEffect(() => {
-    if (!isDictionaryLoaded || validTargets.length === 0) return;
-
-    const seed = xmur3(selectedDate)();
-    const rand = mulberry32(seed);
-
-    let newBoard = Array.from({ length: 6 }, () => new Array(12).fill(null));
-    let chosenWords: string[] = [];
-
-    for (let i = 0; i < 6; i++) {
-      chosenWords.push(validTargets[Math.floor(rand() * validTargets.length)]);
-    }
-    chosenWords.sort((a, b) => b.length - a.length);
-
-    let evenRadials = [0, 2, 4, 6, 8, 10];
-    let oddRadials = [1, 3, 5, 7, 9, 11];
-
-    for (let i = evenRadials.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      [evenRadials[i], evenRadials[j]] = [evenRadials[j], evenRadials[i]];
-    }
-    for (let i = oddRadials.length - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      [oddRadials[i], oddRadials[j]] = [oddRadials[j], oddRadials[i]];
-    }
-
-    let chosenRadials: number[] = [];
-    for (let i = 0; i < 6; i++) {
-      if (chosenWords[i].length === 6) {
-        chosenRadials.push(evenRadials.pop()!);
-      } else {
-        let pool = (evenRadials.length >= oddRadials.length && evenRadials.length > 0) ? evenRadials : oddRadials;
-        if (pool.length === 0) pool = evenRadials;
-        chosenRadials.push(pool.pop()!);
+    let isMounted = true;
+    async function loadBoard() {
+      if (!supabase) {
+        setServerBoard({ date: selectedDate, board: null });
+        return;
       }
-    }
-
-    for (let i = 0; i < 6; i++) {
-      const word = chosenWords[i];
-      const rad = chosenRadials[i];
-      const direction = rand() < 0.5 ? 'outward' : 'inward';
-      const ring0Available = rad % 2 === 0;
-      const minStartR = ring0Available ? 0 : 1;
-      const maxStartR = 6 - word.length;
-      const startRing = minStartR + Math.floor(rand() * (maxStartR - minStartR + 1));
-
-      for (let j = 0; j < word.length; j++) {
-        const ringIndex = startRing + j;
-        const char = direction === 'outward' ? word[j] : word[word.length - 1 - j];
-        newBoard[ringIndex][rad] = char;
+      const { data, error } = await supabase
+        .from('sunrise_boards')
+        .select('rings, angles')
+        .eq('game_date', selectedDate)
+        .maybeSingle();
+      if (!isMounted) return;
+      if (error) {
+        setErrorMessage("Couldn't load today's board. Words may not count until you reload.");
       }
+      setServerBoard({ date: selectedDate, board: data ? { rings: decodeRings(data.rings), angles: data.angles } : null });
     }
+    loadBoard();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate]);
 
-    const letterPool = "EEEEEEEEEEAAAAAAAAAIIIIIIIIIOOOOOOOONNNNNNTRRRRRRTTTTTTLLLLSSSSUUUUDDDDGGGBBCCMMPPFFHHVVWWYYKJXQZ";
-    for (let r = 0; r < 6; r++) {
-      for (let s = 0; s < 12; s++) {
-        if (r === 0 && s % 2 !== 0) continue;
-        if (!newBoard[r][s]) {
-          newBoard[r][s] = letterPool[Math.floor(rand() * letterPool.length)];
-        }
-      }
-    }
-
-    let initVisual = [0, 0, 0, 0, 0, 0];
-    for (let r = 0; r < 5; r++) {
-      initVisual[r] = Math.floor(rand() * 12) * 30;
-    }
-
-    setBoardState(newBoard);
-    setVisualAngles(initVisual);
-  }, [selectedDate, validTargets, isDictionaryLoaded]);
+  useEffect(() => {
+    if (serverBoard?.date !== selectedDate) return;
+    const board = serverBoard.board ?? (isDictionaryLoaded ? generateBoard(selectedDate, validTargets) : null);
+    if (!board) return;
+    setBoardState(board.rings);
+    setVisualAngles(board.angles);
+  }, [serverBoard, selectedDate, validTargets, isDictionaryLoaded]);
 
   // --- Interaction Handlers ---
   const getPointerAngleAndDistance = (e: React.PointerEvent) => {
@@ -301,6 +233,10 @@ export default function SunriseGame() {
   // --- Validation ---
   const handleSubmit = async () => {
     if (isHistoricalDate || boardState.length === 0 || isSaving) return;
+    if (getCSTDate() !== selectedDate) {
+      setErrorMessage("It's a new day! Reload for today's board.");
+      return;
+    }
 
     setIsSaving(true);
     setErrorMessage("");
@@ -346,7 +282,7 @@ export default function SunriseGame() {
                 word: wordOut,
                 tiles: tileIds,
                 length: len,
-                score: wordOut.split('').reduce((sum, ch) => sum + (SCRABBLE_SCORES[ch] || 1), 0),
+                score: scoreWord(wordOut),
                 radIndex: rad,
                 minR,
                 maxR
@@ -359,7 +295,7 @@ export default function SunriseGame() {
                 word: wordIn,
                 tiles: tileIds,
                 length: len,
-                score: wordIn.split('').reduce((sum, ch) => sum + (SCRABBLE_SCORES[ch] || 1), 0),
+                score: scoreWord(wordIn),
                 radIndex: rad,
                 minR,
                 maxR
@@ -377,7 +313,7 @@ export default function SunriseGame() {
     let turnScore = 0;
 
     for (const cand of candidates) {
-      if (!foundWords.includes(cand.word) && !newlyValidated.includes(cand.word)) {
+      if (!foundWords.includes(cand.word) && !newlyValidated.includes(cand.word) && !rejectedWords.includes(cand.word)) {
         newlyValidated.push(cand.word);
         newRays.push({ radIndex: cand.radIndex, minR: cand.minR, maxR: cand.maxR });
         turnScore += cand.score;
@@ -385,8 +321,8 @@ export default function SunriseGame() {
     }
 
     if (newlyValidated.length > 0) {
-      const cumulativeWords = [...foundWords, ...newlyValidated];
-      const newScore = localScore + turnScore;
+      let cumulativeWords = [...foundWords, ...newlyValidated];
+      let newScore = localScore + turnScore;
 
       if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
       setHighlightedRays(newRays);
@@ -397,12 +333,22 @@ export default function SunriseGame() {
       let dbFailed = false;
 
       if (supabase && profile) {
-        const { error } = await supabase.rpc('submit_sunrise_score', {
-          submitted_words: cumulativeWords,
-          final_score: newScore
+        // The server re-checks every word against the board and returns the official tally
+        const { data, error } = await supabase.rpc('submit_sunrise_score', {
+          submitted_words: cumulativeWords
         });
 
-        if (error) {
+        if (!error && data?.[0]) {
+          const counted: string[] = data[0].words;
+          const turnedDown = newlyValidated.filter((w) => !counted.includes(w));
+          if (turnedDown.length > 0) {
+            setRejectedWords((prev) => [...prev, ...turnedDown]);
+            setErrorMessage(`Didn't count: ${turnedDown.join(', ')}`);
+            setTimeout(() => setErrorMessage(""), 4000);
+          }
+          cumulativeWords = counted;
+          newScore = data[0].score;
+        } else if (error) {
           console.error("Supabase sync failed:", error);
           dbFailed = true;
         }
