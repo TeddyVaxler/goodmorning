@@ -2,7 +2,7 @@
 
 import Modal from './Modal';
 import { Palette, Lock, Volume2, VolumeX } from 'lucide-react';
-import { BOSS_SKINS, formatNumber, type GameState } from '@/lib/idle';
+import { BOSS_SKINS, formatNumber, skinById, type GameState } from '@/lib/idle';
 import BossHat, { SEASON_NAMES, type Season } from './BossHat';
 
 interface WardrobeModalProps {
@@ -39,7 +39,7 @@ export default function WardrobeModal({ game, season, isMuted, onSelectSkin, onT
               >
                 <div className={`relative w-14 h-14 rounded-full border-2 overflow-visible ${skin.ringClass} ${isUnlocked ? '' : 'grayscale opacity-50'}`}>
                   <img src="/goodmorning.png" alt="" className="w-full h-full rounded-full object-contain" draggable={false} />
-                  {skin.overlay && <span className={`absolute leading-none text-[26px] ${skin.overlayClass.replace(/text-\[[^\]]+\]/, '')}`}>{skin.overlay}</span>}
+                  {skin.overlay && <span className={`absolute leading-none text-[26px] ${skin.overlayClass}`}>{skin.overlay}</span>}
                   {!isUnlocked && <Lock className="absolute inset-0 m-auto w-6 h-6 text-[#1A2E35]" />}
                 </div>
                 <span className="text-xs font-black leading-tight">{skin.name}</span>
@@ -51,7 +51,11 @@ export default function WardrobeModal({ game, season, isMuted, onSelectSkin, onT
           })}
         </div>
 
-        {season && (
+        {season && skinById(game.skin).onHead ? (
+          <p className="p-3 border-2 border-dashed border-gray-300 text-xs font-bold text-gray-500">
+            The {SEASON_NAMES[season]} hat is off while the boss wears {skinById(game.skin).name}.
+          </p>
+        ) : season && (
           <label className="flex items-center justify-between gap-3 p-3 border-2 border-[#1A2E35] bg-[#f4f7f5] cursor-pointer">
             <span className="flex items-center gap-3">
               <span className="relative w-12 h-12 shrink-0">

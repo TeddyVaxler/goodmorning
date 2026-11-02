@@ -177,7 +177,9 @@ export default function GoodMorningClicker() {
   const tier = comboTier(combo);
   const mps = getMps(game) * (isGoldenHour ? GOLDEN_HOUR_MULTIPLIER : 1);
   const skin = skinById(game.skin);
-  const hat = game.hideSeasonalHat ? null : season;
+  // A head skin the player picked replaces the seasonal hat (otherwise Party Boss and Royal
+  // Morning would never show, since a hat is on for most of the year)
+  const hat = game.hideSeasonalHat || skin.onHead ? null : season;
   const nextPromotionAt = promotionThreshold(game.promotions);
   const canPromote = game.runMornings >= nextPromotionAt;
 
@@ -478,7 +480,7 @@ export default function GoodMorningClicker() {
       >
 
         {/* Nav */}
-        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 short:top-3 short:left-3 z-20 flex items-center">
+        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 short:top-3 short:left-3 z-30 flex items-center">
           <Link href="/goodmorning" aria-label="Back" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-1 sm:px-2 py-1">
             <ArrowLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
           </Link>
@@ -493,7 +495,7 @@ export default function GoodMorningClicker() {
 
         {/* Player handle (hidden until Supabase is configured) */}
         {player.isEnabled && player.isReady && (
-          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 short:top-3 short:right-3 z-20">
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 short:top-3 short:right-3 z-30">
             <button
               onClick={openProfile}
               aria-label={player.profile ? `Edit player @${player.profile.handle}` : 'Claim your @handle'}
@@ -515,8 +517,9 @@ export default function GoodMorningClicker() {
         )}
 
         {/* Scoreboard */}
-        {/* sm:pt clears the Back link and handle badge once the title gets wide */}
-        <div className="text-center space-y-1.5 sm:space-y-3 short:space-y-1 squat:space-y-1 z-10 relative shrink-0 sm:pt-10 short:pt-8 squat:pt-1">
+        {/* sm:pt clears the Back link and handle badge once the title gets wide; z-20 keeps it
+            above the combo sunburst, which reaches up past the boss */}
+        <div className="text-center space-y-1.5 sm:space-y-3 short:space-y-1 squat:space-y-1 z-20 relative shrink-0 sm:pt-10 short:pt-8 squat:pt-1">
           <h1 className="px-14 sm:px-0 text-[clamp(0.95rem,5.2vw,1.25rem)] sm:text-3xl md:text-5xl short:text-xl font-extrabold uppercase tracking-tighter text-[#1A2E35]">
             Mornings Gooded
           </h1>
@@ -596,8 +599,15 @@ export default function GoodMorningClicker() {
           </motion.div>
 
           {/* Skin accessory and seasonal hat sit outside the circle so they can poke over its edge */}
-          {skin.overlay && !(hat && skin.onHead) && (
-            <span aria-hidden="true" className={`absolute z-20 leading-none pointer-events-none ${skin.overlayClass}`}>{skin.overlay}</span>
+          {/* Sized off the boss box (cqw), or the 9rem fallback boss where those units aren't supported */}
+          {skin.overlay && (
+            <span
+              aria-hidden="true"
+              className={`absolute z-20 leading-none pointer-events-none text-[length:calc(9rem*var(--size))] supports-[width:1cqh]:text-[length:calc(100cqw*var(--size))] ${skin.overlayClass}`}
+              style={{ '--size': skin.overlaySize } as React.CSSProperties}
+            >
+              {skin.overlay}
+            </span>
           )}
           {hat && <BossHat season={hat} />}
 
@@ -621,8 +631,9 @@ export default function GoodMorningClicker() {
         </div>
 
         {/* Combo meter floats at the bottom of the boss area, so it never pushes the layout */}
-        <div className={`absolute bottom-0 h-5 flex items-center gap-2 transition-opacity pointer-events-none ${combo >= 3 ? 'opacity-100' : 'opacity-0'}`}>
-          <span className="text-xs font-black uppercase tracking-widest" style={{ color: tier.multiplier === 1 ? '#b45309' : rayColor }}>
+        {/* Solid pill above the rays (z-30) so the streak's sunburst can't wash it out */}
+        <div className={`absolute bottom-0 z-30 flex items-center gap-2 px-2 py-0.5 bg-white border-2 border-[#1A2E35] shadow-[2px_2px_0px_0px_#1A2E35] transition-opacity pointer-events-none ${combo >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+          <span className="text-xs font-black uppercase tracking-widest text-[#1A2E35]">
             Combo x{tier.multiplier}
           </span>
           <span className="w-20 sm:w-28 h-2 border border-[#1A2E35] bg-gray-100">

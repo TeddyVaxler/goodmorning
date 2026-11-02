@@ -82,17 +82,18 @@ export interface BossSkin {
   unlockAt: number; // All-time mornings needed
   overlay: string | null; // Emoji drawn over the boss
   overlayClass: string; // Where the overlay sits
-  onHead: boolean; // Hidden while a seasonal hat is on, so they don't stack
+  overlaySize: number; // Overlay font size, as a fraction of the boss's width
+  onHead: boolean; // Replaces the seasonal hat while worn, so they don't stack
   ringClass: string; // Background and border of the boss circle
 }
 
 export const BOSS_SKINS: BossSkin[] = [
-  { id: 'classic', name: 'Classic', unlockAt: 0, overlay: null, overlayClass: '', onHead: false, ringClass: 'bg-[#F5A800] border-[#1A2E35]' },
-  { id: 'shades', name: 'Too Cool', unlockAt: 10000, overlay: '🕶️', overlayClass: 'top-[30%] left-1/2 -translate-x-1/2 text-[38cqw]', onHead: false, ringClass: 'bg-[#7dd3fc] border-[#1A2E35]' },
-  { id: 'coffee', name: 'Caffeinated', unlockAt: 100000, overlay: '☕', overlayClass: 'bottom-[4%] right-[4%] text-[30cqw]', onHead: false, ringClass: 'bg-[#c08457] border-[#1A2E35]' },
-  { id: 'party', name: 'Party Boss', unlockAt: 1000000, overlay: '🥳', overlayClass: '-top-[6%] right-[2%] text-[32cqw]', onHead: true, ringClass: 'bg-[#f0abfc] border-[#1A2E35]' },
-  { id: 'crown', name: 'Royal Morning', unlockAt: 100000000, overlay: '👑', overlayClass: '-top-[14%] left-1/2 -translate-x-1/2 text-[34cqw]', onHead: true, ringClass: 'bg-[#fde047] border-[#a16207]' },
-  { id: 'cosmic', name: 'Cosmic Sunrise', unlockAt: 10000000000, overlay: '🌌', overlayClass: 'bottom-[2%] left-[4%] text-[28cqw]', onHead: false, ringClass: 'bg-[#4c1d95] border-[#F9CB66]' },
+  { id: 'classic', name: 'Classic', unlockAt: 0, overlay: null, overlayClass: '', overlaySize: 0, onHead: false, ringClass: 'bg-[#F5A800] border-[#1A2E35]' },
+  { id: 'shades', name: 'Too Cool', unlockAt: 10000, overlay: '🕶️', overlayClass: 'top-[30%] left-1/2 -translate-x-1/2', overlaySize: 0.38, onHead: false, ringClass: 'bg-[#7dd3fc] border-[#1A2E35]' },
+  { id: 'coffee', name: 'Caffeinated', unlockAt: 100000, overlay: '☕', overlayClass: 'bottom-[4%] right-[4%]', overlaySize: 0.30, onHead: false, ringClass: 'bg-[#c08457] border-[#1A2E35]' },
+  { id: 'party', name: 'Party Boss', unlockAt: 1000000, overlay: '🥳', overlayClass: '-top-[6%] right-[2%]', overlaySize: 0.32, onHead: true, ringClass: 'bg-[#f0abfc] border-[#1A2E35]' },
+  { id: 'crown', name: 'Royal Morning', unlockAt: 100000000, overlay: '👑', overlayClass: '-top-[14%] left-1/2 -translate-x-1/2', overlaySize: 0.34, onHead: true, ringClass: 'bg-[#fde047] border-[#a16207]' },
+  { id: 'cosmic', name: 'Cosmic Sunrise', unlockAt: 10000000000, overlay: '🌌', overlayClass: 'bottom-[2%] left-[4%]', overlaySize: 0.28, onHead: false, ringClass: 'bg-[#4c1d95] border-[#F9CB66]' },
 ];
 
 export const skinById = (id: string) => BOSS_SKINS.find((s) => s.id === id) ?? BOSS_SKINS[0];
