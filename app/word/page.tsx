@@ -8,7 +8,7 @@ import { ArrowLeft, AtSign, BarChart3, CircleHelp, Delete, Share2, Trophy } from
 import { usePlayer, type Profile } from '@/lib/usePlayer';
 import { formatDuration } from '@/lib/idle';
 import {
-  WORD_LENGTH, MAX_GUESSES, loadWordGame, submitWordGuess, fetchWordStats, fetchWordLeaderboard,
+  WORD_LENGTH, MAX_GUESSES, loadWordGame, submitWordGuess, setWordHardMode, fetchWordStats, fetchWordLeaderboard,
   buildWordShareText, keyboardMarks, secondsUntilNextWord,
   type WordGame, type WordStats, type WordLeaderboardRow, type Mark, type WordError,
 } from '@/lib/morningWord';
@@ -19,6 +19,7 @@ import { PrimaryButton, SecondaryButton } from '../goodmorning/game/buttons';
 const montserrat = Montserrat({ subsets: ['latin'] });
 
 const HELP_SEEN_KEY = 'morning-word-help-seen';
+const HARD_MODE_KEY = 'morning-word-hard-mode'; // '1' turns hard mode on for each new day's word
 const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 const FLIP_SECONDS = 0.3; // Per tile; tiles in a row flip one after another
 
@@ -30,6 +31,8 @@ const MARK_STYLES: Record<Mark, string> = {
 
 const ERROR_MESSAGES: Record<WordError, string> = {
   not_a_word: 'Not in the word list',
+  hard_mode: 'Hard mode: use every hint',
+  already_guessing: 'Hard mode can only change before your first guess',
   game_over: "You've already played today",
   no_word_today: "Today's word isn't ready yet",
   unavailable: "Couldn't reach the server. Try again.",
@@ -55,7 +58,10 @@ export default function MorningWordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [revealRow, setRevealRow] = useState<number | null>(null); // Row whose tiles are flipping
   const [toast, setToast] = useState<string | null>(null);
-  const [modal, setModal] = useState<'help' | 'results' | 'profile' | null>(null);
+  const [modal, setModal] = useState<'help' | 'results' | 'leaderboard' | 'profile' | null>(null);
+  const [profileReturn, setProfileReturn] = useState<'results' | 'leaderboard' | null>(null); // Popup to go back to after saving a handle
+  const [hardModeWanted, setHardModeWanted] = useState(false); // This device's saved choice, for each new day
+  const [isTogglingHardMode, setIsTogglingHardMode] = useState(false);
   const rowShake = useAnimationControls();
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -67,15 +73,23 @@ export default function MorningWordPage() {
 
   useEffect(() => {
     let cancelled = false;
-    loadWordGame().then((result) => {
+    const wantsHardMode = readHardModePreference();
+    setHardModeWanted(wantsHardMode);
+    (async () => {
+      // With hard mode saved, one call opens today's word and switches it on. It's refused once
+      // today's game has started without it, and then the game just loads as it is.
+      let result = wantsHardMode ? await setWordHardMode(true) : await loadWordGame();
+      const hardModeFailed = wantsHardMode && 'error' in result && result.error === 'unavailable';
+      if ('error' in result && wantsHardMode) result = await loadWordGame();
       if (cancelled) return;
-      if ('game' in result) {
-        setGame(result.game);
-        if (result.game.finished) setModal('results');
-      } else {
+      if (!('game' in result)) {
         setLoadError(result.error);
+        return;
       }
-    });
+      setGame(result.game);
+      if (result.game.finished) setModal('results');
+      else if (hardModeFailed) showToast("Couldn't turn on hard mode. Try it from the ? menu.", 3000);
+    })();
     try {
       if (!localStorage.getItem(HELP_SEEN_KEY)) {
         setModal((m) => m ?? 'help');
@@ -87,7 +101,7 @@ export default function MorningWordPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showToast]);
 
   const isLocked = !game || game.finished || isSubmitting || revealRow !== null;
 
@@ -105,7 +119,7 @@ export default function MorningWordPage() {
 
     if ('error' in result) {
       rowShake.start({ x: [0, -8, 8, -6, 6, 0], transition: { duration: 0.35 } });
-      showToast(ERROR_MESSAGES[result.error]);
+      showToast(result.detail ?? ERROR_MESSAGES[result.error], result.error === 'hard_mode' ? 2400 : 1800);
       return;
     }
 
@@ -144,9 +158,41 @@ export default function MorningWordPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [modal, press]);
 
+  // Saves the choice for future days, and applies it to today's word if it hasn't been started
+  const toggleHardMode = async () => {
+    if (isTogglingHardMode) return;
+    const next = !hardModeWanted;
+    setHardModeWanted(next);
+    try {
+      localStorage.setItem(HARD_MODE_KEY, next ? '1' : '0');
+    } catch {
+      // Storage blocked: it still applies to today's word
+    }
+    if (!game || game.guesses.length > 0 || game.hardMode === next) return;
+
+    setIsTogglingHardMode(true);
+    const result = await setWordHardMode(next);
+    setIsTogglingHardMode(false);
+    if ('game' in result) {
+      setGame(result.game);
+      return;
+    }
+    showToast(ERROR_MESSAGES[result.error]);
+    // Guessed on another device: show that game
+    if (result.error === 'already_guessing') {
+      const reloaded = await loadWordGame();
+      if ('game' in reloaded) setGame(reloaded.game);
+    }
+  };
+
+  const openProfile = (from: 'results' | 'leaderboard' | null) => {
+    setProfileReturn(from);
+    setModal('profile');
+  };
+
   const handleSaveProfile = async (input: Profile) => {
     const error = await saveProfile(input);
-    if (!error) setModal(game?.finished ? 'results' : null);
+    if (!error) setModal(profileReturn);
     return error;
   };
 
@@ -167,14 +213,20 @@ export default function MorningWordPage() {
         </div>
         <h1 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tighter text-center">
           Morning Word{game && <span className="text-teal"> #{game.puzzleNumber}</span>}
+          {game?.hardMode && (
+            <span className="block text-[10px] tracking-widest text-red-600" title="Hard mode: every hint must be used">★ Hard mode</span>
+          )}
         </h1>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setModal('results')} aria-label="Stats and leaderboard" className="p-2 hover:text-teal">
+        <div className="flex items-center">
+          <button onClick={() => setModal('leaderboard')} aria-label="Today's leaderboard" className="p-2 hover:text-teal">
+            <Trophy className="w-6 h-6" />
+          </button>
+          <button onClick={() => setModal('results')} aria-label="Statistics" className="p-2 hover:text-teal">
             <BarChart3 className="w-6 h-6" />
           </button>
           {isReady && (
             <button
-              onClick={() => setModal('profile')}
+              onClick={() => openProfile(null)}
               aria-label={profile ? `Signed in as @${profile.handle}` : 'Claim your handle'}
               className={`p-2 border-2 border-line ${profile ? 'bg-paper' : 'bg-sun'} hover:bg-leaf`}
             >
@@ -212,17 +264,35 @@ export default function MorningWordPage() {
       <Keyboard marks={keyMarks} onPress={press} disabled={isLocked} />
 
       <AnimatePresence>
-        {modal === 'help' && <HelpModal onClose={() => setModal(null)} />}
+        {modal === 'help' && (
+          <HelpModal
+            hardModeWanted={hardModeWanted}
+            todayStarted={game !== null && game.guesses.length > 0}
+            todayHardMode={game?.hardMode ?? false}
+            isSaving={isTogglingHardMode}
+            onToggleHardMode={toggleHardMode}
+            onClose={() => setModal(null)}
+          />
+        )}
+        {modal === 'leaderboard' && (
+          <Modal labelledBy="word-leaderboard-title" onClose={() => setModal(null)} closeLabel="Close leaderboard" size="sm">
+            <h2 id="word-leaderboard-title" className="text-2xl font-extrabold uppercase tracking-tighter flex items-center gap-2">
+              <Trophy className="w-6 h-6 text-teal" /> Today
+            </h2>
+            <TodayLeaderboard hasProfile={profile !== null} onClaimHandle={() => openProfile('leaderboard')} />
+            <SecondaryButton onClick={() => setModal(null)}>Close</SecondaryButton>
+          </Modal>
+        )}
         {modal === 'results' && (
           <ResultsModal
             game={game}
             hasProfile={profile !== null}
-            onClaimHandle={() => setModal('profile')}
+            onClaimHandle={() => openProfile('results')}
             onClose={() => setModal(null)}
           />
         )}
         {modal === 'profile' && (
-          <ProfileModal profile={profile} onSave={handleSaveProfile} onClose={() => setModal(null)} />
+          <ProfileModal profile={profile} onSave={handleSaveProfile} onClose={() => setModal(profileReturn)} />
         )}
       </AnimatePresence>
     </main>
@@ -327,7 +397,14 @@ function Key({ label, ariaLabel, mark, wide = false, onPress, disabled }: {
   );
 }
 
-function HelpModal({ onClose }: { onClose: () => void }) {
+function HelpModal({ hardModeWanted, todayStarted, todayHardMode, isSaving, onToggleHardMode, onClose }: {
+  hardModeWanted: boolean;
+  todayStarted: boolean;
+  todayHardMode: boolean;
+  isSaving: boolean;
+  onToggleHardMode: () => void;
+  onClose: () => void;
+}) {
   const example = (word: string, index: number, mark: Mark) => (
     <div className="grid grid-cols-5 gap-1 w-44">
       {word.split('').map((letter, i) => (
@@ -357,6 +434,17 @@ function HelpModal({ onClose }: { onClose: () => void }) {
       <p className="text-xs font-bold text-gray-500">
         A new word every day at midnight Central. Fewest guesses tops the leaderboard; ties go to whoever solved it fastest.
       </p>
+      <label className="flex items-center justify-between gap-3 p-3 border-2 border-line bg-page cursor-pointer">
+        <span className="flex flex-col text-sm font-black">
+          ★ Hard mode
+          <span className="text-xs font-bold text-gray-500">
+            {todayStarted && todayHardMode !== hardModeWanted
+              ? `Today's game is already ${todayHardMode ? 'on' : 'off'} hard mode. This starts with tomorrow's word.`
+              : 'Every hint must be used in later guesses.'}
+          </span>
+        </span>
+        <input type="checkbox" checked={hardModeWanted} disabled={isSaving} onChange={onToggleHardMode} className="w-5 h-5 shrink-0 accent-teal" />
+      </label>
       <PrimaryButton onClick={onClose} autoFocus>Let&apos;s Go</PrimaryButton>
     </Modal>
   );
@@ -369,13 +457,11 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
   onClose: () => void;
 }) {
   const [stats, setStats] = useState<WordStats | null>(null);
-  const [board, setBoard] = useState<WordLeaderboardRow[] | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(() => secondsUntilNextWord());
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchWordStats().then(setStats);
-    fetchWordLeaderboard().then(setBoard);
     const timer = setInterval(() => setSecondsLeft(secondsUntilNextWord()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -440,25 +526,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
         <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-1">
           <Trophy className="w-4 h-4 text-teal" /> Today
         </h3>
-        {board === null ? (
-          <p className="text-xs font-bold text-gray-500">Loading…</p>
-        ) : board.length === 0 ? (
-          <p className="text-xs font-bold text-gray-500">No one has finished yet. Be the first.</p>
-        ) : (
-          <ol className="text-xs font-bold flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-            {board.map((row) => (
-              <li key={row.rank} className={`flex justify-between px-2 py-1 ${row.isMe ? 'bg-cream border border-line' : ''}`}>
-                <span>#{row.rank} @{row.handle}</span>
-                <span>{row.solved ? `${row.guesses}/6` : 'X/6'} · {solveTime(row.seconds)}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-        {!hasProfile && (
-          <button onClick={onClaimHandle} className="mt-1 text-xs font-black text-teal underline text-left">
-            Claim a handle to get on the leaderboard →
-          </button>
-        )}
+        <TodayLeaderboard hasProfile={hasProfile} onClaimHandle={onClaimHandle} />
       </div>
 
       {game?.finished && (
@@ -474,4 +542,52 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
       <SecondaryButton onClick={onClose}>Close</SecondaryButton>
     </Modal>
   );
+}
+
+// Today's finished games, best first. ★ marks hard mode.
+function TodayLeaderboard({ hasProfile, onClaimHandle }: { hasProfile: boolean; onClaimHandle: () => void }) {
+  const [board, setBoard] = useState<WordLeaderboardRow[] | null | 'error'>(null);
+
+  useEffect(() => {
+    fetchWordLeaderboard()
+      .then((rows) => setBoard(rows ?? 'error'))
+      .catch(() => setBoard('error'));
+  }, []);
+
+  return (
+    <>
+      {board === null ? (
+        <p className="text-xs font-bold text-gray-500">Loading…</p>
+      ) : board === 'error' ? (
+        <p className="text-xs font-bold text-gray-500">Couldn&apos;t load the leaderboard.</p>
+      ) : board.length === 0 ? (
+        <p className="text-xs font-bold text-gray-500">No one has finished yet. Be the first.</p>
+      ) : (
+        <ol className="text-xs font-bold flex flex-col gap-0.5 max-h-60 overflow-y-auto">
+          {board.map((row) => (
+            <li key={row.rank} className={`flex justify-between gap-2 px-2 py-1 ${row.isMe ? 'bg-cream border border-line' : ''}`}>
+              <span className="truncate">
+                #{row.rank} @{row.handle}
+                {row.hardMode && <span className="text-red-600" title="Hard mode"> ★</span>}
+              </span>
+              <span className="shrink-0">{row.solved ? `${row.guesses}/6` : 'X/6'} · {solveTime(row.seconds)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {!hasProfile && (
+        <button onClick={onClaimHandle} className="mt-1 text-xs font-black text-teal underline text-left">
+          Claim a handle to get on the leaderboard →
+        </button>
+      )}
+    </>
+  );
+}
+
+function readHardModePreference() {
+  try {
+    return localStorage.getItem(HARD_MODE_KEY) === '1';
+  } catch {
+    return false;
+  }
 }

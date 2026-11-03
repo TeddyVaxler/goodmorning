@@ -16,6 +16,7 @@ export interface WordGame {
   solved: boolean;
   finished: boolean;
   answer: string | null; // Only sent once the game is over
+  hardMode: boolean; // Hints must be used in later guesses
 }
 
 export interface WordStats {
@@ -33,6 +34,7 @@ export interface WordLeaderboardRow {
   solved: boolean;
   seconds: number;
   isMe: boolean;
+  hardMode: boolean;
 }
 
 interface WordGameRow {
@@ -43,11 +45,13 @@ interface WordGameRow {
   solved: boolean;
   finished: boolean;
   answer: string | null;
+  hard_mode: boolean;
 }
 
-// 'not_a_word' and 'game_over' are the player's to fix; 'unavailable' covers network and setup
-export type WordError = 'not_a_word' | 'game_over' | 'no_word_today' | 'unavailable';
-export type WordResult = { game: WordGame } | { error: WordError };
+// 'not_a_word', 'hard_mode' and the like are the player's to fix; 'unavailable' covers network
+// and setup. 'hard_mode' comes with the hint the guess ignored, like "Letter 2 must be R".
+export type WordError = 'not_a_word' | 'hard_mode' | 'already_guessing' | 'game_over' | 'no_word_today' | 'unavailable';
+export type WordResult = { game: WordGame } | { error: WordError; detail?: string };
 
 const toGame = (row: WordGameRow): WordGame => ({
   day: row.day,
@@ -57,18 +61,22 @@ const toGame = (row: WordGameRow): WordGame => ({
   solved: row.solved,
   finished: row.finished,
   answer: row.answer,
+  hardMode: row.hard_mode,
 });
 
-const KNOWN_ERRORS: WordError[] = ['not_a_word', 'game_over', 'no_word_today'];
-const toError = (message: string | undefined): WordError =>
-  KNOWN_ERRORS.find((code) => message?.includes(code)) ?? 'unavailable';
+const KNOWN_ERRORS: WordError[] = ['not_a_word', 'hard_mode', 'already_guessing', 'game_over', 'no_word_today'];
+
+function toError(message: string | undefined): { error: WordError; detail?: string } {
+  const error = KNOWN_ERRORS.find((code) => message?.includes(code)) ?? 'unavailable';
+  return error === 'hard_mode' ? { error, detail: message?.split('hard_mode:')[1]?.trim() } : { error };
+}
 
 async function call(rpc: string, args?: Record<string, unknown>): Promise<WordResult> {
   const client = supabase;
   if (!client || !(await ensureSession(client))) return { error: 'unavailable' };
   try {
     const { data, error } = await client.rpc(rpc, args);
-    if (error) return { error: toError(error.message) };
+    if (error) return toError(error.message);
     const row = (data as WordGameRow[] | null)?.[0];
     return row ? { game: toGame(row) } : { error: 'unavailable' };
   } catch {
@@ -80,6 +88,9 @@ async function call(rpc: string, args?: Record<string, unknown>): Promise<WordRe
 export const loadWordGame = () => call('my_word_game');
 
 export const submitWordGuess = (guess: string) => call('submit_word_guess', { guess });
+
+// Only allowed before the first guess of the day
+export const setWordHardMode = (enabled: boolean) => call('set_word_hard_mode', { enabled });
 
 export async function fetchWordStats(): Promise<WordStats | null> {
   const client = supabase;
@@ -101,13 +112,14 @@ export async function fetchWordLeaderboard(): Promise<WordLeaderboardRow[] | nul
   if (!client) return null;
   const { data, error } = await client.rpc('get_word_leaderboard');
   if (error || !data) return null;
-  return data.map((row: { rank: number; handle: string; guesses: number; solved: boolean; seconds: number; is_me: boolean }) => ({
+  return data.map((row: { rank: number; handle: string; guesses: number; solved: boolean; seconds: number; is_me: boolean; hard_mode: boolean }) => ({
     rank: row.rank,
     handle: row.handle,
     guesses: row.guesses,
     solved: row.solved,
     seconds: row.seconds,
     isMe: row.is_me,
+    hardMode: row.hard_mode,
   }));
 }
 
@@ -116,9 +128,9 @@ export const secondsUntilNextWord = secondsUntilNextRush;
 
 const SQUARES: Record<Mark, string> = { G: '🟩', Y: '🟨', B: '⬛' };
 
-// Spoiler-free result grid, like "Morning Word #3 4/6"
+// Spoiler-free result grid, like "Morning Word #3 4/6" ("4/6*" on hard mode)
 export function buildWordShareText(game: WordGame, url: string) {
-  const score = game.solved ? `${game.guesses.length}/${MAX_GUESSES}` : `X/${MAX_GUESSES}`;
+  const score = `${game.solved ? game.guesses.length : 'X'}/${MAX_GUESSES}${game.hardMode ? '*' : ''}`;
   return [
     `Morning Word #${game.puzzleNumber} ${score}`,
     '',
