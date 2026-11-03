@@ -219,7 +219,7 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/70 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 p-4"
     >
       <motion.div
         role="dialog"
@@ -229,20 +229,20 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.8, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="relative w-full max-w-md max-h-full overflow-y-auto overscroll-contain flex flex-col items-center gap-4 p-5 sm:p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="relative w-full max-w-md max-h-full overflow-y-auto overscroll-contain flex flex-col items-center gap-4 p-5 sm:p-6 bg-paper border-2 border-line text-center shadow-[8px_8px_0px_0px_rgb(var(--line))]"
       >
         {!isLocked && (
           <button
             onClick={onClose}
             aria-label="Close Morning Rush"
-            className="absolute top-3 right-3 p-1 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+            className="absolute top-3 right-3 p-1 text-ink hover:text-teal touch-manipulation"
           >
             <X className="w-6 h-6" />
           </button>
         )}
 
         <h2 id="rush-title" className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tighter flex items-center gap-2">
-          <Timer className="w-7 h-7 text-[#006b5b]" />
+          <Timer className="w-7 h-7 text-teal" />
           Morning Rush
         </h2>
 
@@ -250,19 +250,19 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
 
         {phase === 'ready' && (
           <>
-            <div className="w-full p-3 border-2 border-[#1A2E35] bg-[#fff8e6] text-left">
+            <div className="w-full p-3 border-2 border-line bg-cream text-left">
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Today&apos;s twist</p>
               <p className="text-lg font-black">{twist.name}</p>
               <p className="text-xs font-bold text-gray-600">{twist.description}</p>
             </div>
             {stats?.streakNeedsFreeze && (
-              <p className="w-full px-3 py-2 border-2 border-[#1A2E35] bg-[#e0f2fe] text-xs font-bold text-left">
+              <p className="w-full px-3 py-2 border-2 border-line bg-sky text-xs font-bold text-left">
                 🧊 You missed a day, but a streak freeze will save your {stats.currentStreak}-day streak when you play.
               </p>
             )}
             <ol className="w-full flex flex-col gap-2 text-left text-sm font-bold">
               <RuleStep n={1}>Tap the boss as many times as you can in {RUSH_SECONDS} seconds.</RuleStep>
-              <RuleStep n={2}>You get <span className="text-[#006b5b]">one shot per day</span>. No retries, so make it count.</RuleStep>
+              <RuleStep n={2}>You get <span className="text-teal">one shot per day</span>. No retries, so make it count.</RuleStep>
               <RuleStep n={3}>Your score goes on today&apos;s leaderboard. Play daily to build a streak.</RuleStep>
             </ol>
             <p className="text-xs font-bold text-gray-500">Upgrades don&apos;t count. New Rush every day at midnight CT.</p>
@@ -275,7 +275,7 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
             key={countdown}
             initial={{ scale: 2, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="py-16 text-8xl font-black text-[#006b5b]"
+            className="py-16 text-8xl font-black text-teal"
           >
             {countdown}
           </motion.div>
@@ -285,10 +285,10 @@ export default memo(function MorningRush({ hasProfile, isCovered, showHat, onCla
           <>
             <div className="w-full flex items-center justify-between font-black">
               <span className="text-3xl tabular-nums">{Math.ceil(timeLeft)}s</span>
-              <span className="text-5xl text-[#006b5b] tabular-nums">{score}</span>
+              <span className="text-5xl text-teal tabular-nums">{score}</span>
             </div>
-            <div className="w-full h-3 border-2 border-[#1A2E35] bg-gray-100">
-              <div className="h-full bg-[#F9CB66]" style={{ width: `${(timeLeft / RUSH_SECONDS) * 100}%` }} />
+            <div className="w-full h-3 border-2 border-line bg-gray-100">
+              <div className="h-full bg-sun" style={{ width: `${(timeLeft / RUSH_SECONDS) * 100}%` }} />
             </div>
             <RushField
               twist={twist}
@@ -367,7 +367,7 @@ function TodayResult({ stats, hasProfile, onClaimHandle, onShowLeaderboard }: {
           {rushLabel(stats.playedAt ?? undefined)}
           {stats.playedAt && <> · {formatCentralDate(stats.playedAt)}</>}
         </p>
-        <div className="text-7xl font-black text-[#006b5b] tabular-nums">{stats.todayScore ?? '-'}</div>
+        <div className="text-7xl font-black text-teal tabular-nums">{stats.todayScore ?? '-'}</div>
         <p className="text-xs font-bold text-gray-600">
           {stats.todayScore == null
             ? "Today's run didn't finish. Your next shot is tomorrow."
@@ -386,7 +386,7 @@ function TodayResult({ stats, hasProfile, onClaimHandle, onShowLeaderboard }: {
           <Trophy className="w-5 h-5" /> See Leaderboard
         </PrimaryButton>
       ) : (
-        <div className="w-full flex flex-col gap-2 p-3 border-2 border-dashed border-[#1A2E35] bg-[#fff8e6]">
+        <div className="w-full flex flex-col gap-2 p-3 border-2 border-dashed border-line bg-cream">
           <p className="text-sm font-bold">
             {stats.todayScore != null ? 'Your score is saved, but nobody can see it yet.' : 'Get on the board tomorrow.'}{' '}
             Claim a handle to show up on the leaderboard.
@@ -419,7 +419,7 @@ function TodayResult({ stats, hasProfile, onClaimHandle, onShowLeaderboard }: {
 function RuleStep({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <li className="flex gap-3 items-start">
-      <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-[#F9CB66] border-2 border-[#1A2E35] text-xs font-black">{n}</span>
+      <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-sun border-2 border-line text-xs font-black">{n}</span>
       <span>{children}</span>
     </li>
   );
@@ -427,7 +427,7 @@ function RuleStep({ n, children }: { n: number; children: React.ReactNode }) {
 
 function Stat({ label, value, icon }: { label: string; value: number | string | null; icon?: boolean }) {
   return (
-    <div className="p-2 border-2 border-[#1A2E35] bg-[#f4f7f5]">
+    <div className="p-2 border-2 border-line bg-page">
       <div className="text-[10px] font-black tracking-widest uppercase text-gray-600">{label}</div>
       <div className="text-xl font-black tabular-nums flex items-center justify-center gap-1">
         {icon && <Flame className="w-4 h-4 text-orange-500" />}

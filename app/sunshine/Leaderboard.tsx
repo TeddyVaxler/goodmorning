@@ -40,19 +40,19 @@ export default function Leaderboard({ selectedDate }: { selectedDate: string }) 
     }, [selectedDate]);
 
     return (
-        <div className="border-2 border-[#1A2E35] p-6 bg-white shadow-[6px_6px_0_0_#1A2E35]">
-            <h2 className="text-white mb-4 font-black tracking-wider uppercase bg-[#006b5b] inline-block px-3 py-1 border-2 border-[#1A2E35]">
+        <div className="border-2 border-line p-6 bg-paper shadow-[6px_6px_0_0_rgb(var(--line))]">
+            <h2 className="text-white mb-4 font-black tracking-wider uppercase bg-teal inline-block px-3 py-1 border-2 border-line">
                 DAILY LEADERBOARD
             </h2>
             <div className="flex flex-col gap-3 mt-2">
-                {leaders.length === 0 && <div className="text-[#1A2E35]/60 font-bold uppercase tracking-wider text-xs">No scores yet today.</div>}
+                {leaders.length === 0 && <div className="text-ink/60 font-bold uppercase tracking-wider text-xs">No scores yet today.</div>}
                 
                 {leaders.map((l, i) => (
-                    <div key={i} className="flex justify-between items-center text-sm font-bold border-b-2 border-[#1A2E35] border-dashed pb-2">
-                        <span className="text-[#1A2E35]">{i + 1}. @{l.profiles?.handle || 'Unknown'}</span>
+                    <div key={i} className="flex justify-between items-center text-sm font-bold border-b-2 border-line border-dashed pb-2">
+                        <span className="text-ink">{i + 1}. @{l.profiles?.handle || 'Unknown'}</span>
                         <div className="text-right">
-                            <div className="text-[#006b5b] font-black">{l.score} pts</div>
-                            <div className="text-xs text-[#1A2E35]/70">{l.words_found || 0} words</div>
+                            <div className="text-teal font-black">{l.score} pts</div>
+                            <div className="text-xs text-ink/70">{l.words_found || 0} words</div>
                         </div>
                     </div>
                 ))}

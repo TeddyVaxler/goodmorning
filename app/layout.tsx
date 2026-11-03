@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { THEME_SCRIPT } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "Good Morning!",
@@ -27,7 +28,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // The script applies a saved theme before the first paint; without one, dark mode follows the device
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
+        />
+      </head>
       {/* 
         overscroll-none prevents the "pull-to-refresh" bounce effect 
         on mobile browsers when swiping up or down

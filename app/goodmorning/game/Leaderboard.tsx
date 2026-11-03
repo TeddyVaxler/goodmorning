@@ -57,7 +57,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex border-2 border-[#1A2E35]" role="tablist" aria-label="Leaderboard period">
+      <div className="flex border-2 border-line" role="tablist" aria-label="Leaderboard period">
         {PERIODS.map(({ id, label }) => (
           <button
             key={id}
@@ -65,7 +65,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
             aria-selected={period === id}
             onClick={() => changePeriod(id)}
             className={`flex-1 py-2 px-1 whitespace-nowrap text-[11px] sm:text-sm font-black uppercase tracking-wide transition-colors touch-manipulation ${
-              period === id ? 'bg-[#1A2E35] text-white' : 'bg-white hover:bg-[#F9CB66]'
+              period === id ? 'bg-ink text-paper' : 'bg-paper hover:bg-sun'
             }`}
           >
             {label}
@@ -90,31 +90,31 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
           {rows.map((row) => (
             <li
               key={row.rank}
-              className={`flex items-center gap-3 px-3 py-2 border-2 border-[#1A2E35] ${
-                row.isMe ? 'bg-[#F9CB66]' : row.rank === 1 ? 'bg-[#fff8e6]' : 'bg-white'
+              className={`flex items-center gap-3 px-3 py-2 border-2 border-line ${
+                row.isMe ? 'bg-sun' : row.rank === 1 ? 'bg-cream' : 'bg-paper'
               }`}
             >
               <span className="w-8 text-lg font-black tabular-nums">#{row.rank}</span>
               <span className="flex-1 min-w-0 flex items-center gap-1">
                 {row.isChampion && <span title="Last week's champion" aria-label="Last week's champion">👑</span>}
                 <span className="truncate font-bold">@{row.handle}</span>
-                {row.isMe && <span className="shrink-0 text-xs font-black text-[#006b5b]">(you)</span>}
+                {row.isMe && <span className="shrink-0 text-xs font-black text-teal">(you)</span>}
                 <span className="shrink-0 ml-auto pl-1 text-sm leading-none" aria-label="Top badges">
                   {topBadges(row.badges).map((b) => (
                     <span key={b.id} title={b.name}>{b.emoji}</span>
                   ))}
                 </span>
               </span>
-              <span className="text-lg font-black text-[#006b5b] tabular-nums">{row.score}</span>
+              <span className="text-lg font-black text-teal tabular-nums">{row.score}</span>
             </li>
           ))}
         </ol>
       )}
 
-      <div className="mt-1 flex items-center justify-between gap-3 p-3 border-2 border-dashed border-[#1A2E35] bg-[#f4f7f5]">
+      <div className="mt-1 flex items-center justify-between gap-3 p-3 border-2 border-dashed border-line bg-page">
         <span className="text-xs sm:text-sm font-bold">
           {myBest != null ? (
-            <>Your {period === 'today' ? 'score today' : period === 'week' ? 'week total' : 'best ever'}: <span className="font-black text-[#006b5b]">{myBest}</span></>
+            <>Your {period === 'today' ? 'score today' : period === 'week' ? 'week total' : 'best ever'}: <span className="font-black text-teal">{myBest}</span></>
           ) : (
             period === 'today' && myStats?.playedToday ? "Today's run didn't finish" : 'No score yet'
           )}
@@ -126,7 +126,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
         </span>
         <button
           onClick={onPlayRush}
-          className="shrink-0 flex items-center gap-1 px-3 py-1 bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] text-xs sm:text-sm font-bold border-2 border-[#1A2E35] transition-colors touch-manipulation"
+          className="shrink-0 flex items-center gap-1 px-3 py-1 bg-teal hover:bg-sun text-white hover:text-ink text-xs sm:text-sm font-bold border-2 border-line transition-colors touch-manipulation"
         >
           <Timer className="w-4 h-4" /> {myStats?.playedToday ? 'My Result' : 'Play Rush'}
         </button>
@@ -134,7 +134,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
 
       {/* Scores are saved without a handle but stay off the board: nudge to claim one */}
       {!hasProfile && (
-        <div className="flex flex-col gap-2 p-3 border-2 border-[#1A2E35] bg-[#fff8e6]">
+        <div className="flex flex-col gap-2 p-3 border-2 border-line bg-cream">
           <p className="text-xs sm:text-sm font-bold">
             {myStats?.todayScore != null
               ? "You've played, but you're not on the board yet."
@@ -143,7 +143,7 @@ export default memo(function Leaderboard({ refreshKey, hasProfile, onPlayRush, o
           </p>
           <button
             onClick={onClaimHandle}
-            className="self-start flex items-center gap-1 px-3 py-1 bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black border-2 border-[#1A2E35] shadow-[2px_2px_0px_0px_#1A2E35] transition-colors touch-manipulation"
+            className="self-start flex items-center gap-1 px-3 py-1 bg-sun hover:bg-paper text-ink text-xs sm:text-sm font-black border-2 border-line shadow-[2px_2px_0px_0px_rgb(var(--line))] transition-colors touch-manipulation"
           >
             <AtSign className="w-4 h-4" /> Claim Handle
           </button>

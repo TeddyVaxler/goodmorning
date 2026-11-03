@@ -72,7 +72,7 @@ export default function Walkthrough({ accountsEnabled, hasProfile, onClaimHandle
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4"
     >
       <motion.div
         role="dialog"
@@ -82,12 +82,12 @@ export default function Walkthrough({ accountsEnabled, hasProfile, onClaimHandle
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.8, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className="relative w-full max-w-sm max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="relative w-full max-w-sm max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-paper border-2 border-line text-center shadow-[8px_8px_0px_0px_rgb(var(--line))]"
       >
         <button
           onClick={onClose}
           aria-label="Skip how to play"
-          className="absolute top-3 right-3 p-1 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+          className="absolute top-3 right-3 p-1 text-ink hover:text-teal touch-manipulation"
         >
           <X className="w-6 h-6" />
         </button>
@@ -102,8 +102,8 @@ export default function Walkthrough({ accountsEnabled, hasProfile, onClaimHandle
           animate={{ opacity: 1, x: 0 }}
           className="flex flex-col items-center gap-3"
         >
-          <div className="p-4 bg-[#F9CB66] border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#1A2E35]">
-            <Icon className="w-10 h-10 text-[#1A2E35]" />
+          <div className="p-4 bg-sun border-2 border-line shadow-[3px_3px_0px_0px_rgb(var(--line))]">
+            <Icon className="w-10 h-10 text-ink" />
           </div>
           <h2 id="walkthrough-title" className="text-2xl font-extrabold uppercase tracking-tighter">{step.title}</h2>
           <p className="text-sm font-bold text-gray-600">{step.body}</p>
@@ -112,7 +112,7 @@ export default function Walkthrough({ accountsEnabled, hasProfile, onClaimHandle
         {/* Step dots */}
         <div className="flex gap-2" aria-hidden="true">
           {steps.map((_, i) => (
-            <span key={i} className={`w-2.5 h-2.5 border-2 border-[#1A2E35] ${i === index ? 'bg-[#006b5b]' : 'bg-white'}`} />
+            <span key={i} className={`w-2.5 h-2.5 border-2 border-line ${i === index ? 'bg-teal' : 'bg-paper'}`} />
           ))}
         </div>
 

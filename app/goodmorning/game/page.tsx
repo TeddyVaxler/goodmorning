@@ -469,25 +469,25 @@ export default function GoodMorningClicker() {
     // Pinned to the visible screen (fixed, not 100vh, which is taller than the screen in iPhone
     // Safari): the page itself never scrolls, only the side panel does. Side by side on desktop
     // and on phones turned sideways (`short`).
-    <main className={`fixed inset-0 overflow-hidden bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} p-3 sm:p-4 md:p-8 short:p-3 squat:p-2 flex flex-col lg:flex-row short:flex-row gap-4 md:gap-8 short:gap-4 squat:gap-2 selection:bg-[#F9CB66]`}>
+    <main className={`fixed inset-0 overflow-hidden bg-page text-ink ${montserrat.className} p-3 sm:p-4 md:p-8 short:p-3 squat:p-2 flex flex-col lg:flex-row short:flex-row gap-4 md:gap-8 short:gap-4 squat:gap-2 selection:bg-sun selection:text-night`}>
 
       {/* LEFT AREA: The Clicker Area (stays put; shrinks before the shop does) */}
       <div
         ref={clickerPanelRef}
-        className={`flex-[1.5_1_0%] min-h-0 lg:flex-1 short:flex-1 min-w-0 flex flex-col items-center border-2 border-[#1A2E35] p-4 sm:p-6 short:p-3 squat:p-2 shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] relative overflow-hidden transition-colors duration-500 ${
-          isGoldenHour ? 'bg-[#fffbeb]' : 'bg-white'
+        className={`flex-[1.5_1_0%] min-h-0 lg:flex-1 short:flex-1 min-w-0 flex flex-col items-center border-2 border-line p-4 sm:p-6 short:p-3 squat:p-2 shadow-[4px_4px_0px_0px_rgb(var(--line))] sm:shadow-[8px_8px_0px_0px_rgb(var(--line))] relative overflow-hidden transition-colors duration-500 ${
+          isGoldenHour ? 'bg-glow' : 'bg-paper'
         }`}
       >
 
         {/* Nav */}
         <div className="absolute top-4 left-4 sm:top-6 sm:left-6 short:top-3 short:left-3 z-30 flex items-center">
-          <Link href="/goodmorning" aria-label="Back" className="flex items-center gap-2 text-[#006b5b] hover:text-[#F9CB66] font-bold transition-colors touch-manipulation px-1 sm:px-2 py-1">
+          <Link href="/goodmorning" aria-label="Back" className="flex items-center gap-2 text-teal hover:text-sun font-bold transition-colors touch-manipulation px-1 sm:px-2 py-1">
             <ArrowLeft className="w-5 h-5" /> <span className="hidden sm:inline">Back</span>
           </Link>
           <button
             onClick={openWalkthrough}
             aria-label="How to play"
-            className="p-1 text-[#006b5b] hover:text-[#1A2E35] transition-colors touch-manipulation"
+            className="p-1 text-teal hover:text-ink transition-colors touch-manipulation"
           >
             <CircleHelp className="w-5 h-5" />
           </button>
@@ -499,7 +499,7 @@ export default function GoodMorningClicker() {
             <button
               onClick={openProfile}
               aria-label={player.profile ? `Edit player @${player.profile.handle}` : 'Claim your @handle'}
-              className="relative flex items-center gap-1 px-2 py-1 border-2 border-[#1A2E35] bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-xs sm:text-sm font-black shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
+              className="relative flex items-center gap-1 px-2 py-1 border-2 border-line bg-sun hover:bg-paper text-ink text-xs sm:text-sm font-black shadow-[2px_2px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
             >
               <AtSign className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline max-w-[10rem] truncate">
@@ -508,8 +508,8 @@ export default function GoodMorningClicker() {
               {/* Unclaimed: a pulsing dot draws the eye on phones, where the label is hidden */}
               {!player.profile && (
                 <span className="absolute -top-1.5 -right-1.5 flex w-3 h-3" aria-hidden="true">
-                  <span className="absolute inline-flex w-full h-full rounded-full bg-[#006b5b] opacity-75 animate-ping" />
-                  <span className="relative inline-flex w-3 h-3 rounded-full bg-[#006b5b] border border-white" />
+                  <span className="absolute inline-flex w-full h-full rounded-full bg-teal opacity-75 animate-ping" />
+                  <span className="relative inline-flex w-3 h-3 rounded-full bg-teal border border-white" />
                 </span>
               )}
             </button>
@@ -520,7 +520,7 @@ export default function GoodMorningClicker() {
         {/* sm:pt clears the Back link and handle badge once the title gets wide; z-20 keeps it
             above the combo sunburst, which reaches up past the boss */}
         <div className="text-center space-y-1.5 sm:space-y-3 short:space-y-1 squat:space-y-1 z-20 relative shrink-0 sm:pt-10 short:pt-8 squat:pt-1">
-          <h1 className="px-14 sm:px-0 text-[clamp(0.95rem,5.2vw,1.25rem)] sm:text-3xl md:text-5xl short:text-xl font-extrabold uppercase tracking-tighter text-[#1A2E35]">
+          <h1 className="px-14 sm:px-0 text-[clamp(0.95rem,5.2vw,1.25rem)] sm:text-3xl md:text-5xl short:text-xl font-extrabold uppercase tracking-tighter text-ink">
             Mornings Gooded
           </h1>
 
@@ -530,30 +530,30 @@ export default function GoodMorningClicker() {
               onClick={() => setIsPromotionOpen(true)}
               animate={{ scale: [1, 1.06, 1] }}
               transition={{ duration: 1.2, repeat: Infinity }}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-[#9FD085] border-2 border-[#1A2E35] text-xs sm:text-sm font-black uppercase shadow-[2px_2px_0px_0px_#1A2E35] touch-manipulation"
+              className="inline-flex items-center gap-1 px-3 py-1 bg-leaf border-2 border-line text-xs sm:text-sm font-black uppercase shadow-[2px_2px_0px_0px_rgb(var(--line))] touch-manipulation"
             >
               <BriefcaseBusiness className="w-4 h-4" /> Get Promoted!
             </motion.button>
           ) : (
             <div className="flex items-center justify-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest text-gray-500">
               <span>{jobTitle(game.promotions)}{multiplier > 1 && ` · x${formatNumber(multiplier)}`}</span>
-              <span className="w-16 sm:w-24 h-1.5 border border-[#1A2E35] bg-gray-100" title={`Next promotion at ${formatNumber(nextPromotionAt)} earned in this job`}>
-                <span className="block h-full bg-[#9FD085]" style={{ width: `${Math.min(100, (game.runMornings / nextPromotionAt) * 100)}%` }} />
+              <span className="w-16 sm:w-24 h-1.5 border border-line bg-gray-100" title={`Next promotion at ${formatNumber(nextPromotionAt)} earned in this job`}>
+                <span className="block h-full bg-leaf" style={{ width: `${Math.min(100, (game.runMornings / nextPromotionAt) * 100)}%` }} />
               </span>
             </div>
           )}
 
-          <div className={`text-4xl sm:text-6xl md:text-8xl short:text-4xl squat:text-3xl font-black drop-shadow-md break-all px-2 tabular-nums ${isGoldenHour ? 'text-[#b45309]' : 'text-[#006b5b]'}`}>
+          <div className={`text-4xl sm:text-6xl md:text-8xl short:text-4xl squat:text-3xl font-black drop-shadow-md break-all px-2 tabular-nums ${isGoldenHour ? 'text-honey' : 'text-teal'}`}>
             {formatNumber(mornings)}
           </div>
           <div className="flex items-center justify-center gap-2 sm:gap-3">
-            <div className={`text-sm sm:text-lg font-bold border-2 border-[#1A2E35] px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35] ${isGoldenHour ? 'bg-[#fde047]' : 'bg-[#F9CB66]'}`}>
+            <div className={`text-sm sm:text-lg font-bold border-2 border-line px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_rgb(var(--line))] ${isGoldenHour ? 'bg-lemon' : 'bg-sun'}`}>
               {formatNumber(mps)} / sec
             </div>
             {player.isEnabled && (
               <button
                 onClick={openRush}
-                className="flex items-center gap-1 text-sm sm:text-lg font-bold bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] border-2 border-[#1A2E35] px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
+                className="flex items-center gap-1 text-sm sm:text-lg font-bold bg-teal hover:bg-sun text-white hover:text-ink border-2 border-line px-3 py-1 sm:px-4 sm:py-2 shadow-[2px_2px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation"
               >
                 <Timer className="w-4 h-4 sm:w-5 sm:h-5" /> Rush
               </button>
@@ -571,7 +571,7 @@ export default function GoodMorningClicker() {
               initial={{ y: -10, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute top-0 z-30 flex items-center gap-1 px-3 py-1 bg-[#fde047] border-2 border-[#1A2E35] text-xs sm:text-sm font-black uppercase shadow-[2px_2px_0px_0px_#1A2E35]"
+              className="absolute top-0 z-30 flex items-center gap-1 px-3 py-1 bg-lemon border-2 border-line text-xs sm:text-sm font-black uppercase shadow-[2px_2px_0px_0px_rgb(var(--line))]"
             >
               <Sparkles className="w-4 h-4" /> Golden Hour x{GOLDEN_HOUR_MULTIPLIER} · {goldenSecondsLeft}s
             </motion.div>
@@ -588,7 +588,7 @@ export default function GoodMorningClicker() {
             onClick={handleBossClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`relative z-10 w-full h-full rounded-full border-4 flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] active:shadow-none transition-all select-none cursor-pointer ${skin.ringClass}`}
+            className={`relative z-10 w-full h-full rounded-full border-4 flex items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_rgb(var(--line))] active:shadow-none transition-all select-none cursor-pointer ${skin.ringClass}`}
           >
             <img
               src="/goodmorning.png"
@@ -621,7 +621,7 @@ export default function GoodMorningClicker() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: p.isBig ? 1.4 : 0.8, ease: "easeOut" }}
                 onAnimationComplete={() => removeParticle(p.id)}
-                className={`absolute font-black pointer-events-none z-50 drop-shadow-lg whitespace-nowrap ${p.isBig ? 'text-3xl text-[#f97316]' : 'text-2xl sm:text-3xl text-[#006b5b]'}`}
+                className={`absolute font-black pointer-events-none z-50 drop-shadow-lg whitespace-nowrap ${p.isBig ? 'text-3xl text-[#f97316]' : 'text-2xl sm:text-3xl text-teal'}`}
                 style={{ left: 0, top: 0 }}
               >
                 {p.label}
@@ -632,11 +632,11 @@ export default function GoodMorningClicker() {
 
         {/* Combo meter floats at the bottom of the boss area, so it never pushes the layout */}
         {/* Solid pill above the rays (z-30) so the streak's sunburst can't wash it out */}
-        <div className={`absolute bottom-0 z-30 flex items-center gap-2 px-2 py-0.5 bg-white border-2 border-[#1A2E35] shadow-[2px_2px_0px_0px_#1A2E35] transition-opacity pointer-events-none ${combo >= 3 ? 'opacity-100' : 'opacity-0'}`}>
-          <span className="text-xs font-black uppercase tracking-widest text-[#1A2E35]">
+        <div className={`absolute bottom-0 z-30 flex items-center gap-2 px-2 py-0.5 bg-paper border-2 border-line shadow-[2px_2px_0px_0px_rgb(var(--line))] transition-opacity pointer-events-none ${combo >= 3 ? 'opacity-100' : 'opacity-0'}`}>
+          <span className="text-xs font-black uppercase tracking-widest text-ink">
             Combo x{tier.multiplier}
           </span>
-          <span className="w-20 sm:w-28 h-2 border border-[#1A2E35] bg-gray-100">
+          <span className="w-20 sm:w-28 h-2 border border-line bg-gray-100">
             <span className="block h-full" style={{ width: `${tier.progress * 100}%`, background: rayColor }} />
           </span>
         </div>
@@ -646,7 +646,7 @@ export default function GoodMorningClicker() {
         <button
           onClick={toggleMute}
           aria-label={isMuted ? 'Turn sound on' : 'Turn sound off'}
-          className="absolute bottom-3 left-3 z-20 p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+          className="absolute bottom-3 left-3 z-20 p-1.5 text-ink hover:text-teal touch-manipulation"
         >
           {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
@@ -654,14 +654,14 @@ export default function GoodMorningClicker() {
           <button
             onClick={openAchievements}
             aria-label={`Achievements (${allBadges.length} earned)`}
-            className="p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+            className="p-1.5 text-ink hover:text-teal touch-manipulation"
           >
             <Medal className="w-5 h-5" />
           </button>
           <button
             onClick={openWardrobe}
             aria-label="Boss wardrobe"
-            className="p-1.5 text-[#1A2E35] hover:text-[#006b5b] touch-manipulation"
+            className="p-1.5 text-ink hover:text-teal touch-manipulation"
           >
             <Palette className="w-5 h-5" />
           </button>
@@ -682,7 +682,7 @@ export default function GoodMorningClicker() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="max-w-full px-3 py-2 bg-[#1A2E35] text-white text-xs sm:text-sm font-bold text-center border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#F9CB66]"
+                className="max-w-full px-3 py-2 bg-ink text-paper text-xs sm:text-sm font-bold text-center border-2 border-line shadow-[3px_3px_0px_0px_#F9CB66]"
               >
                 {t.text}
               </motion.div>
@@ -692,21 +692,21 @@ export default function GoodMorningClicker() {
     </div>
 
       {/* RIGHT AREA: The Shop / Leaderboard. The header stays put; only the list below it scrolls. */}
-      <div ref={sidePanelRef} className="flex-[1_1_0%] min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-[#1A2E35] bg-white shadow-[4px_4px_0px_0px_#1A2E35] sm:shadow-[8px_8px_0px_0px_#1A2E35] overflow-hidden">
+      <div ref={sidePanelRef} className="flex-[1_1_0%] min-h-0 min-w-0 lg:max-w-md short:max-w-[50%] w-full flex flex-col border-2 border-line bg-paper shadow-[4px_4px_0px_0px_rgb(var(--line))] sm:shadow-[8px_8px_0px_0px_rgb(var(--line))] overflow-hidden">
         {/* Panel header: a plain title, or Shop / Leaderboard tabs once accounts are on */}
-        <div className="shrink-0 mx-4 mt-4 sm:mx-6 sm:mt-6 short:mx-3 short:mt-3 border-b-4 border-[#1A2E35] pb-2 flex items-center gap-4">
+        <div className="shrink-0 mx-4 mt-4 sm:mx-6 sm:mt-6 short:mx-3 short:mt-3 border-b-4 border-line pb-2 flex items-center gap-4">
           {player.isEnabled ? (
             <div role="tablist" aria-label="Side panel" className="flex items-center gap-3 sm:gap-4 min-w-0">
               <PanelTab isActive={sidePanel === 'shop'} onClick={() => setSidePanel('shop')}>
-                <Sun className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-[#F9CB66] fill-current" /> Daily Grind
+                <Sun className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-sun fill-current" /> Daily Grind
               </PanelTab>
               <PanelTab isActive={sidePanel === 'leaderboard'} onClick={() => setSidePanel('leaderboard')}>
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-[#F9CB66]" /> Leaderboard
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-sun" /> Leaderboard
               </PanelTab>
             </div>
           ) : (
             <h2 className="text-xl sm:text-2xl font-extrabold uppercase flex items-center gap-2">
-              <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] fill-current" />
+              <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-sun fill-current" />
               The Daily Grind
             </h2>
           )}
@@ -823,7 +823,7 @@ function PanelTab({ isActive, onClick, children }: { isActive: boolean; onClick:
       aria-selected={isActive}
       onClick={onClick}
       className={`flex items-center gap-1.5 sm:gap-2 whitespace-nowrap text-[clamp(0.75rem,3.6vw,0.875rem)] sm:text-lg short:text-xs font-extrabold uppercase transition-colors touch-manipulation ${
-        isActive ? 'text-[#1A2E35]' : 'text-gray-400 hover:text-[#006b5b]'
+        isActive ? 'text-ink' : 'text-gray-400 hover:text-teal'
       }`}
     >
       {children}
@@ -891,7 +891,7 @@ function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose:
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4"
     >
       <motion.div
         role="dialog"
@@ -902,16 +902,16 @@ function WelcomeBackModal({ report, onClose }: { report: OfflineReport; onClose:
         exit={{ scale: 0.8, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-white border-2 border-[#1A2E35] text-center shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="w-full max-w-sm max-h-full overflow-y-auto flex flex-col items-center gap-4 p-6 bg-paper border-2 border-line text-center shadow-[8px_8px_0px_0px_rgb(var(--line))]"
       >
-        <Sun className="w-12 h-12 text-[#F9CB66] fill-current" />
+        <Sun className="w-12 h-12 text-sun fill-current" />
         <h2 id="welcome-back-title" className="text-2xl font-extrabold uppercase tracking-tighter">
           Welcome Back!
         </h2>
         <p className="text-sm font-bold text-gray-600">
           While you were out for {formatDuration(report.seconds)}, the boss said good morning
         </p>
-        <div className="text-4xl font-black text-[#006b5b] break-all">
+        <div className="text-4xl font-black text-teal break-all">
           +{formatNumber(report.earned)}
         </div>
         <p className="text-sm font-bold text-gray-600">times.</p>
@@ -940,14 +940,14 @@ function UpgradeButton({ upgrade, multiplier, cost, owned, canAfford, onBuy }: U
     <button
       onClick={() => onBuy(upgrade.id, upgrade.baseCost)}
       disabled={!canAfford}
-      className={`group shrink-0 flex items-center justify-between p-3 sm:p-4 short:p-2 border-2 border-[#1A2E35] text-left transition-all touch-manipulation ${
+      className={`group shrink-0 flex items-center justify-between p-3 sm:p-4 short:p-2 border-2 border-line text-left transition-all touch-manipulation ${
         canAfford
-        ? 'bg-white hover:bg-[#F9CB66] shadow-[3px_3px_0px_0px_#1A2E35] hover:translate-y-[2px] hover:translate-x-[2px] cursor-pointer hover:shadow-none'
+        ? 'bg-paper hover:bg-sun shadow-[3px_3px_0px_0px_rgb(var(--line))] hover:translate-y-[2px] hover:translate-x-[2px] cursor-pointer hover:shadow-none'
         : 'bg-gray-100 opacity-70 cursor-not-allowed'
       }`}
     >
       <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-        <div className={`p-2 sm:p-3 short:p-1.5 border-2 border-[#1A2E35] shrink-0 ${canAfford ? 'bg-[#006b5b] text-white' : 'bg-gray-300 text-gray-600'}`}>
+        <div className={`p-2 sm:p-3 short:p-1.5 border-2 border-line shrink-0 ${canAfford ? 'bg-teal text-white' : 'bg-gray-300 text-gray-600'}`}>
           <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
         <div className="min-w-0">
@@ -955,13 +955,13 @@ function UpgradeButton({ upgrade, multiplier, cost, owned, canAfford, onBuy }: U
           <p className="text-[10px] sm:text-xs font-bold text-gray-600">
             {upgradeDescription({ ...upgrade, effect: upgrade.effect * multiplier })}
           </p>
-          <p className={`text-xs sm:text-sm font-black mt-1 ${canAfford ? 'text-[#006b5b]' : 'text-red-500'}`}>
+          <p className={`text-xs sm:text-sm font-black mt-1 ${canAfford ? 'text-teal' : 'text-red-500'}`}>
             Cost: {formatNumber(cost)}
           </p>
         </div>
       </div>
 
-      <div className="text-xl sm:text-3xl short:text-xl font-black text-gray-300 group-hover:text-[#1A2E35] transition-colors px-2">
+      <div className="text-xl sm:text-3xl short:text-xl font-black text-gray-300 group-hover:text-ink transition-colors px-2">
         {owned}
       </div>
     </button>

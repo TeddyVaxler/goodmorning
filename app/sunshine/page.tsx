@@ -385,8 +385,8 @@ export default function SunriseGame() {
 
   if (!hasMounted) {
     return (
-      <div className={`min-h-screen bg-[#f4f7f5] text-[#1A2E35] p-4 lg:p-8 ${montserrat.className} flex items-center justify-center`} suppressHydrationWarning>
-        <div className="text-sm font-bold tracking-widest uppercase bg-white border-2 border-[#1A2E35] p-6 shadow-[4px_4px_0_0_#1A2E35]">
+      <div className={`min-h-screen bg-page text-ink p-4 lg:p-8 ${montserrat.className} flex items-center justify-center`} suppressHydrationWarning>
+        <div className="text-sm font-bold tracking-widest uppercase bg-paper border-2 border-line p-6 shadow-[4px_4px_0_0_rgb(var(--line))]">
           Loading Sunrise...
         </div>
       </div>
@@ -394,19 +394,19 @@ export default function SunriseGame() {
   }
 
   return (
-    <div className={`min-h-screen bg-[#f4f7f5] text-[#1A2E35] p-4 lg:p-8 ${montserrat.className} touch-pan-y selection:bg-[#F9CB66] selection:text-[#1A2E35]`} suppressHydrationWarning>
+    <div className={`min-h-screen bg-page text-ink p-4 lg:p-8 ${montserrat.className} touch-pan-y selection:bg-sun selection:text-night`} suppressHydrationWarning>
       <header className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 max-w-6xl mx-auto">
         <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
           <Link
             href="/goodmorning"
             aria-label="Back to Good Morning"
-            className="flex items-center gap-2 px-3 sm:px-4 py-3 bg-white hover:bg-[#F9CB66] text-[#1A2E35] font-black border-2 border-[#1A2E35] shadow-[4px_4px_0_0_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors uppercase tracking-widest text-sm touch-manipulation"
+            className="flex items-center gap-2 px-3 sm:px-4 py-3 bg-paper hover:bg-sun text-ink font-black border-2 border-line shadow-[4px_4px_0_0_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors uppercase tracking-widest text-sm touch-manipulation"
           >
             <ArrowLeft className="w-5 h-5 shrink-0" />
             <span className="hidden sm:inline">Back</span>
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-widest bg-[#F9CB66] text-[#1A2E35] px-6 py-3 border-2 border-[#1A2E35] shadow-[4px_4px_0_0_#1A2E35] uppercase flex items-center gap-3">
-            <Sun className="w-8 h-8 text-[#1A2E35]" />
+          <h1 className="text-2xl sm:text-3xl font-black tracking-widest bg-sun text-ink px-6 py-3 border-2 border-line shadow-[4px_4px_0_0_rgb(var(--line))] uppercase flex items-center gap-3">
+            <Sun className="w-8 h-8 text-ink" />
             SUNRISE
           </h1>
         </div>
@@ -415,7 +415,7 @@ export default function SunriseGame() {
           {isReady && isEnabled && (
             <button
               onClick={() => setIsProfileOpen(true)}
-              className="relative w-full sm:w-auto flex items-center justify-center gap-1 px-4 py-3 border-2 border-[#1A2E35] bg-[#F9CB66] hover:bg-white text-[#1A2E35] text-sm font-black shadow-[4px_4px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation uppercase tracking-widest"
+              className="relative w-full sm:w-auto flex items-center justify-center gap-1 px-4 py-3 border-2 border-line bg-sun hover:bg-paper text-ink text-sm font-black shadow-[4px_4px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation uppercase tracking-widest"
             >
               <AtSign className="w-4 h-4 shrink-0" />
               <span className="max-w-[10rem] truncate">
@@ -423,8 +423,8 @@ export default function SunriseGame() {
               </span>
               {!profile && (
                 <span className="absolute -top-1.5 -right-1.5 flex w-3 h-3">
-                  <span className="absolute inline-flex w-full h-full rounded-full bg-[#006b5b] opacity-75 animate-ping" />
-                  <span className="relative inline-flex w-3 h-3 rounded-full bg-[#006b5b] border border-white" />
+                  <span className="absolute inline-flex w-full h-full rounded-full bg-teal opacity-75 animate-ping" />
+                  <span className="relative inline-flex w-3 h-3 rounded-full bg-teal border border-white" />
                 </span>
               )}
             </button>
@@ -434,15 +434,15 @@ export default function SunriseGame() {
             max={todayCST}
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full sm:w-auto bg-white text-[#1A2E35] border-2 border-[#1A2E35] p-3 uppercase font-bold focus:outline-none shadow-[4px_4px_0_0_#1A2E35]"
+            className="w-full sm:w-auto bg-paper text-ink border-2 border-line p-3 uppercase font-bold focus:outline-none shadow-[4px_4px_0_0_rgb(var(--line))]"
           />
         </div>
       </header>
 
       <div className="flex flex-col xl:flex-row gap-8 max-w-6xl mx-auto">
         {/* LEFT COLUMN: Board */}
-        <div className="flex-1 bg-white border-2 border-[#1A2E35] p-4 sm:p-8 relative shadow-[6px_6px_0_0_#1A2E35] flex flex-col items-center">
-          <div className="w-full max-w-[500px] aspect-square bg-[#f4f7f5] border-2 border-[#1A2E35] flex items-center justify-center overflow-hidden touch-none select-none relative mb-6">
+        <div className="flex-1 bg-paper border-2 border-line p-4 sm:p-8 relative shadow-[6px_6px_0_0_rgb(var(--line))] flex flex-col items-center">
+          <div className="w-full max-w-[500px] aspect-square bg-page border-2 border-line flex items-center justify-center overflow-hidden touch-none select-none relative mb-6">
             <svg
               ref={svgRef}
               viewBox={`0 0 ${BOARD_SIZE} ${BOARD_SIZE}`}
@@ -455,9 +455,9 @@ export default function SunriseGame() {
               {/* Tracks */}
               {RING_RADII.map((r, idx) => (
                 <g key={`track-${idx}`}>
-                  <circle cx={CENTER} cy={CENTER} r={r} fill="none" stroke={idx === 5 ? "#006b5b" : "#ffffff"} strokeWidth={STROKE_WIDTH} className="pointer-events-none" />
-                  <circle cx={CENTER} cy={CENTER} r={r - STROKE_WIDTH / 2} fill="none" stroke="#1A2E35" strokeWidth="2" className="pointer-events-none" />
-                  <circle cx={CENTER} cy={CENTER} r={r + STROKE_WIDTH / 2} fill="none" stroke="#1A2E35" strokeWidth="2" className="pointer-events-none" />
+                  <circle cx={CENTER} cy={CENTER} r={r} fill="none" strokeWidth={STROKE_WIDTH} className={`pointer-events-none ${idx === 5 ? "stroke-teal" : "stroke-paper"}`} />
+                  <circle cx={CENTER} cy={CENTER} r={r - STROKE_WIDTH / 2} fill="none" strokeWidth="2" className="pointer-events-none stroke-line" />
+                  <circle cx={CENTER} cy={CENTER} r={r + STROKE_WIDTH / 2} fill="none" strokeWidth="2" className="pointer-events-none stroke-line" />
                 </g>
               ))}
 
@@ -487,7 +487,7 @@ export default function SunriseGame() {
                 );
               })}
 
-              <circle cx={CENTER} cy={CENTER} r={23} fill="#F9CB66" stroke="#1A2E35" strokeWidth="2" className="pointer-events-none" />
+              <circle cx={CENTER} cy={CENTER} r={23} strokeWidth="2" className="pointer-events-none fill-sun stroke-line" />
 
               {/* Letters */}
               {boardState.map((ringArr, r) => {
@@ -511,11 +511,10 @@ export default function SunriseGame() {
                       y={cy}
                       textAnchor="middle"
                       dominantBaseline="central"
-                      fill={r === 5 ? "#ffffff" : "#1A2E35"}
+                      className={`font-mono select-none ${r === 5 ? "fill-white" : "fill-ink"}`}
                       fontSize="19"
                       fontWeight="900"
                       pointerEvents="none"
-                      className="font-mono select-none"
                     >
                       {char}
                     </text>
@@ -525,9 +524,9 @@ export default function SunriseGame() {
             </svg>
           </div>
 
-          <div className="w-full max-w-[500px] p-4 border-2 border-[#1A2E35] bg-[#fff8e6] flex items-start gap-3 mb-4">
-            <Info className="w-6 h-6 flex-shrink-0 text-[#006b5b]" />
-            <div className="text-xs font-bold uppercase tracking-wider leading-relaxed text-[#1A2E35]">
+          <div className="w-full max-w-[500px] p-4 border-2 border-line bg-cream flex items-start gap-3 mb-4">
+            <Info className="w-6 h-6 flex-shrink-0 text-teal" />
+            <div className="text-xs font-bold uppercase tracking-wider leading-relaxed text-ink">
               Rotate the inner rings to align words (4-6 letters) radially. Find new words and click submit to add them to your daily score!
             </div>
           </div>
@@ -543,10 +542,10 @@ export default function SunriseGame() {
             <button
               onClick={handleSubmit}
               disabled={isHistoricalDate || isSaving}
-              className={`w-full p-4 text-lg sm:text-xl font-black border-2 border-[#1A2E35] transition-all uppercase tracking-widest ${
+              className={`w-full p-4 text-lg sm:text-xl font-black border-2 border-line transition-all uppercase tracking-widest ${
                 isHistoricalDate
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
-                  : 'bg-[#006b5b] text-white hover:bg-[#F9CB66] hover:text-[#1A2E35] shadow-[4px_4px_0_0_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
+                  : 'bg-teal text-white hover:bg-sun hover:text-ink shadow-[4px_4px_0_0_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
               }`}
             >
               {isHistoricalDate ? 'PRACTICE (UNSCORED)' : isSaving ? 'SAVING...' : 'SUBMIT ALIGNMENT'}
@@ -556,12 +555,12 @@ export default function SunriseGame() {
 
         {/* RIGHT COLUMN */}
         <div className="w-full xl:w-96 flex flex-col gap-8">
-          <div className="border-2 border-[#1A2E35] p-6 bg-white shadow-[6px_6px_0_0_#1A2E35]">
-            <h2 className="text-[#1A2E35] mb-4 font-black tracking-wider flex items-center gap-2 uppercase">
-              <Trophy className="w-5 h-5 text-[#006b5b]" /> FOUND WORDS ({foundWords.length})
+          <div className="border-2 border-line p-6 bg-paper shadow-[6px_6px_0_0_rgb(var(--line))]">
+            <h2 className="text-ink mb-4 font-black tracking-wider flex items-center gap-2 uppercase">
+              <Trophy className="w-5 h-5 text-teal" /> FOUND WORDS ({foundWords.length})
             </h2>
-            <div className="text-3xl mb-6 text-[#1A2E35] font-black">
-              SCORE: <span className="text-[#006b5b]">{localScore}</span>
+            <div className="text-3xl mb-6 text-ink font-black">
+              SCORE: <span className="text-teal">{localScore}</span>
             </div>
             <div className="flex flex-wrap gap-2 max-h-[280px] overflow-y-auto overscroll-contain">
               {foundWords.length === 0 ? (
@@ -570,7 +569,7 @@ export default function SunriseGame() {
                 </div>
               ) : (
                 foundWords.map((w) => (
-                  <span key={w} className="bg-white text-[#1A2E35] px-3 py-1 font-bold border-2 border-[#1A2E35]">
+                  <span key={w} className="bg-paper text-ink px-3 py-1 font-bold border-2 border-line">
                     {w}
                   </span>
                 ))
@@ -589,10 +588,10 @@ export default function SunriseGame() {
             <button
               onClick={handleSubmit}
               disabled={isHistoricalDate || isSaving}
-              className={`w-full p-4 text-xl font-black border-2 border-[#1A2E35] transition-all uppercase tracking-widest ${
+              className={`w-full p-4 text-xl font-black border-2 border-line transition-all uppercase tracking-widest ${
                 isHistoricalDate
                   ? 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none'
-                  : 'bg-[#006b5b] text-white hover:bg-[#F9CB66] hover:text-[#1A2E35] shadow-[4px_4px_0_0_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
+                  : 'bg-teal text-white hover:bg-sun hover:text-ink shadow-[4px_4px_0_0_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none cursor-pointer'
               }`}
             >
               {isHistoricalDate ? 'PRACTICE (UNSCORED)' : isSaving ? 'SAVING...' : 'SUBMIT ALIGNMENT'}

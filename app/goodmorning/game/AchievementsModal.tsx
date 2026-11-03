@@ -16,7 +16,7 @@ export default function AchievementsModal({ earned, hasProfile, onClose }: Achie
     <Modal labelledBy="achievements-title" onClose={onClose} closeLabel="Close achievements" size="md">
         <div>
           <h2 id="achievements-title" className="text-2xl font-extrabold uppercase tracking-tighter flex items-center gap-2">
-            <Medal className="w-6 h-6 text-[#006b5b]" /> Achievements
+            <Medal className="w-6 h-6 text-teal" /> Achievements
           </h2>
           <p className="text-xs font-bold text-gray-500">
             {earned.length} of {ACHIEVEMENTS.length} earned.{' '}
@@ -30,7 +30,7 @@ export default function AchievementsModal({ earned, hasProfile, onClose }: Achie
             return (
               <li
                 key={a.id}
-                className={`flex items-start gap-2 p-2 border-2 ${isEarned ? 'border-[#1A2E35] bg-[#fff8e6]' : 'border-dashed border-gray-300 bg-gray-50'}`}
+                className={`flex items-start gap-2 p-2 border-2 ${isEarned ? 'border-line bg-cream' : 'border-dashed border-gray-300 bg-gray-50'}`}
               >
                 <span className={`text-2xl leading-none ${isEarned ? '' : 'grayscale opacity-30'}`} aria-hidden="true">{a.emoji}</span>
                 <span className="min-w-0">

@@ -2,6 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme colors as "r g b" so Tailwind can add opacity (bg-scrim/60). Light is the default; dark
+   follows the device setting unless the player picked a theme (data-theme on <html>, set by the
+   script in lib/theme.ts). The two dark blocks must stay identical: CSS can't share one rule
+   between a media query and an attribute selector. ink is text, line is borders and shadows. */
+:root {
+  --ink: 26 46 53;
+  --line: 26 46 53;
+  --page: 244 247 245;
+  --paper: 255 255 255;
+  --cream: 255 248 230;
+  --glow: 255 251 235;
+  --mint: 240 253 244;
+  --sky: 224 242 254;
+  --teal: 0 107 91;
+  --honey: 180 83 9;
+  --scrim: 26 46 53;
+  --gray-50: 249 250 251;
+  --gray-100: 243 244 246;
+  --gray-200: 229 231 235;
+  --gray-300: 209 213 219;
+  --gray-400: 156 163 175;
+  --gray-500: 107 114 128;
+  --gray-600: 75 85 99;
+  --red-50: 254 242 242;
+  --red-500: 239 68 68;
+  --red-600: 220 38 38;
+  --red-700: 185 28 28;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: 232 238 240;
+    --line: 232 238 240;
+    --page: 15 23 26;
+    --paper: 27 39 44;
+    --cream: 46 40 24;
+    --glow: 52 44 18;
+    --mint: 20 46 34;
+    --sky: 19 41 56;
+    --teal: 23 150 128;
+    --honey: 251 191 36;
+    --scrim: 0 0 0;
+    --gray-50: 31 42 47;
+    --gray-100: 36 49 55;
+    --gray-200: 44 58 64;
+    --gray-300: 61 76 83;
+    --gray-400: 95 111 118;
+    --gray-500: 147 161 167;
+    --gray-600: 179 191 196;
+    --red-50: 58 23 23;
+    --red-500: 248 113 113;
+    --red-600: 248 113 113;
+    --red-700: 252 165 165;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: 232 238 240;
+  --line: 232 238 240;
+  --page: 15 23 26;
+  --paper: 27 39 44;
+  --cream: 46 40 24;
+  --glow: 52 44 18;
+  --mint: 20 46 34;
+  --sky: 19 41 56;
+  --teal: 23 150 128;
+  --honey: 251 191 36;
+  --scrim: 0 0 0;
+  --gray-50: 31 42 47;
+  --gray-100: 36 49 55;
+  --gray-200: 44 58 64;
+  --gray-300: 61 76 83;
+  --gray-400: 95 111 118;
+  --gray-500: 147 161 167;
+  --gray-600: 179 191 196;
+  --red-50: 58 23 23;
+  --red-500: 248 113 113;
+  --red-600: 248 113 113;
+  --red-700: 252 165 165;
+  color-scheme: dark;
+}
+
+/* Bright accents look the same in both themes, so text on them keeps its light-theme color.
+   Borders, shadows and other surfaces are left alone. */
+.bg-sun, .bg-leaf, .bg-lemon, .bg-marigold,
+.hover\:bg-sun:hover, .hover\:bg-leaf:hover, .active\:bg-sun:active, .active\:bg-leaf:active {
+  --ink: 26 46 53;
+  --teal: 0 107 91;
+  --gray-400: 156 163 175;
+  --gray-500: 107 114 128;
+  --gray-600: 75 85 99;
+}
+
+/* An accent button that turns plain on hover goes back to the page's text colors */
+.hover\:bg-paper:hover {
+  --ink: inherit;
+  --teal: inherit;
+  --gray-400: inherit;
+  --gray-500: inherit;
+  --gray-600: inherit;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -13,4 +117,5 @@ html, body {
 body {
   min-height: 100vh;
   min-height: 100dvh;
+  background-color: rgb(var(--page));
 }

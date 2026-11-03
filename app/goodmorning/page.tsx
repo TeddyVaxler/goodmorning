@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Sun } from 'lucide-react';
 import { Montserrat } from 'next/font/google';
 import Link from 'next/link';
+import ThemePicker from '@/app/ThemePicker';
 
 const montserrat = Montserrat({ subsets: ['latin'] });
 
@@ -24,35 +25,35 @@ export default function BossJokePage() {
   }, []);
 
   return (
-    <main className={`relative min-h-screen w-full bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} overflow-hidden flex flex-col items-center justify-center p-4 selection:bg-[#F9CB66] selection:text-[#1A2E35]`}>
+    <main className={`relative min-h-screen w-full bg-page text-ink ${montserrat.className} overflow-hidden flex flex-col items-center justify-center p-4 selection:bg-sun selection:text-night`}>
       
-      <div className="z-10 flex flex-col items-center justify-center gap-4 p-6 sm:p-8 bg-white border-2 border-[#1A2E35] w-[95%] sm:w-fit max-w-lg text-center shadow-[4px_4px_0px_0px_#1A2E35]">
+      <div className="z-10 flex flex-col items-center justify-center gap-4 p-6 sm:p-8 bg-paper border-2 border-line w-[95%] sm:w-fit max-w-lg text-center shadow-[4px_4px_0px_0px_rgb(var(--line))]">
         
-        <h1 className="text-3xl sm:text-4xl font-black mb-2 uppercase tracking-widest text-[#1A2E35]">Good Morning</h1>
+        <h1 className="text-3xl sm:text-4xl font-black mb-2 uppercase tracking-widest text-ink">Good Morning</h1>
 
         <div className="flex flex-col w-full gap-4 mt-2 mb-4">
           <Link 
             href="/goodmorning/game"
-            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-[#006b5b] hover:bg-[#F9CB66] text-[#ffffff] hover:text-[#1A2E35] font-bold border-2 border-[#1A2E35] text-lg sm:text-xl transition-colors cursor-pointer active:bg-[#9FD085] shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
+            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-teal hover:bg-sun text-white hover:text-ink font-bold border-2 border-line text-lg sm:text-xl transition-colors cursor-pointer active:bg-leaf shadow-[3px_3px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
           >
             PLAY MORNING RUSH
           </Link>
 
           <Link 
             href="/sunshine"
-            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-white hover:bg-[#F9CB66] text-[#1A2E35] font-bold border-2 border-[#1A2E35] text-lg sm:text-xl transition-colors cursor-pointer shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
+            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-paper hover:bg-sun text-ink font-bold border-2 border-line text-lg sm:text-xl transition-colors cursor-pointer shadow-[3px_3px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
           >
-            <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-[#F9CB66] group-hover:text-[#1A2E35] group-hover:rotate-45 transition-transform shrink-0" />
+            <Sun className="w-5 h-5 sm:w-6 sm:h-6 text-sun group-hover:text-ink group-hover:rotate-45 transition-transform shrink-0" />
             PLAY SUNSHINE PUZZLE
           </Link>
 
           <Link 
             href="/word"
-            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-white hover:bg-[#F9CB66] text-[#1A2E35] font-bold border-2 border-[#1A2E35] text-lg sm:text-xl transition-colors cursor-pointer shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
+            className="group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-6 sm:px-8 py-4 bg-paper hover:bg-sun text-ink font-bold border-2 border-line text-lg sm:text-xl transition-colors cursor-pointer shadow-[3px_3px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none touch-manipulation w-full"
           >
             <span className="grid grid-cols-2 gap-0.5 shrink-0" aria-hidden="true">
-              <span className="w-2.5 h-2.5 bg-[#006b5b]" /><span className="w-2.5 h-2.5 bg-[#F9CB66]" />
-              <span className="w-2.5 h-2.5 bg-gray-400" /><span className="w-2.5 h-2.5 bg-[#006b5b]" />
+              <span className="w-2.5 h-2.5 bg-teal" /><span className="w-2.5 h-2.5 bg-sun" />
+              <span className="w-2.5 h-2.5 bg-gray-400" /><span className="w-2.5 h-2.5 bg-teal" />
             </span>
             PLAY MORNING WORD
           </Link>
@@ -60,14 +61,18 @@ export default function BossJokePage() {
 
         <button 
           onClick={triggerGoodMorning}
-          className="mt-2 text-xs font-black tracking-widest text-[#006b5b] hover:text-[#1A2E35] hover:bg-[#F9CB66] px-3 py-2 border-2 border-transparent hover:border-[#1A2E35] transition-all touch-manipulation"
+          className="mt-2 text-xs font-black tracking-widest text-teal hover:text-ink hover:bg-sun px-3 py-2 border-2 border-transparent hover:border-line transition-all touch-manipulation"
         >
           SAY "GOOD MORNING!" ➔
         </button>
 
+        <div className="w-full sm:w-64">
+          <ThemePicker />
+        </div>
+
         {clickCount > 0 && (
-          <div className="mt-2 px-3 py-2 bg-[#F9CB66] text-[#1A2E35] border border-[#1A2E35] text-xs font-bold tracking-wide w-full sm:w-auto">
-            INTENSITY: <span className="text-[#006b5b] font-extrabold">{clickCount * 20}x</span>
+          <div className="mt-2 px-3 py-2 bg-sun text-ink border border-line text-xs font-bold tracking-wide w-full sm:w-auto">
+            INTENSITY: <span className="text-teal font-extrabold">{clickCount * 20}x</span>
           </div>
         )}
       </div>

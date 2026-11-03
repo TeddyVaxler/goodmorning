@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { UserRound } from 'lucide-react';
+import ThemePicker from '@/app/ThemePicker';
 import { type Profile, HANDLE_PATTERN, NAME_MAX_LENGTH, normalizeHandle } from '@/lib/usePlayer';
 
 interface ProfileModalProps {
@@ -12,7 +13,7 @@ interface ProfileModalProps {
 }
 
 const inputClass =
-  "w-full px-3 py-2 border-2 border-[#1A2E35] bg-white font-bold text-[#1A2E35] focus:outline-none focus:bg-[#fff8e6] disabled:opacity-60";
+  "w-full px-3 py-2 border-2 border-line bg-paper font-bold text-ink focus:outline-none focus:bg-cream disabled:opacity-60";
 
 // Create or edit the player's @handle and name. Names stay private; only the handle is public.
 export default function ProfileModal({ profile, onSave, onClose }: ProfileModalProps) {
@@ -61,7 +62,7 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={() => !isSaving && onClose()}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4"
     >
       <motion.form
         role="dialog"
@@ -73,10 +74,10 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="w-full max-w-sm max-h-full overflow-y-auto flex flex-col gap-4 p-6 bg-white border-2 border-[#1A2E35] shadow-[8px_8px_0px_0px_#1A2E35]"
+        className="w-full max-w-sm max-h-full overflow-y-auto flex flex-col gap-4 p-6 bg-paper border-2 border-line shadow-[8px_8px_0px_0px_rgb(var(--line))]"
       >
         <div className="flex flex-col items-center gap-2 text-center">
-          <UserRound className="w-10 h-10 text-[#006b5b]" />
+          <UserRound className="w-10 h-10 text-teal" />
           <h2 id="profile-title" className="text-2xl font-extrabold uppercase tracking-tighter">
             {profile ? 'Edit Player' : 'Claim Your Handle'}
           </h2>
@@ -85,7 +86,7 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
         <label className="flex flex-col gap-1 text-xs font-black tracking-widest uppercase">
           Handle
           <div className="flex items-stretch">
-            <span className="px-3 flex items-center border-2 border-r-0 border-[#1A2E35] bg-[#F9CB66] font-black text-base">@</span>
+            <span className="px-3 flex items-center border-2 border-r-0 border-line bg-sun font-black text-base">@</span>
             <input
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
@@ -130,6 +131,11 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
           Only your @handle is shown on the leaderboard. Your name stays private.
         </p>
 
+        <div className="flex flex-col gap-1 text-xs font-black tracking-widest uppercase">
+          Theme
+          <ThemePicker />
+        </div>
+
         {error && (
           <p role="alert" className="px-3 py-2 bg-red-50 border-2 border-red-500 text-red-700 text-sm font-bold">
             {error}
@@ -139,7 +145,7 @@ export default function ProfileModal({ profile, onSave, onClose }: ProfileModalP
         <button
           type="submit"
           disabled={isSaving}
-          className="w-full px-6 py-3 bg-[#006b5b] hover:bg-[#F9CB66] text-white hover:text-[#1A2E35] font-bold border-2 border-[#1A2E35] shadow-[3px_3px_0px_0px_#1A2E35] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation disabled:opacity-60 disabled:cursor-wait"
+          className="w-full px-6 py-3 bg-teal hover:bg-sun text-white hover:text-ink font-bold border-2 border-line shadow-[3px_3px_0px_0px_rgb(var(--line))] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-colors touch-manipulation disabled:opacity-60 disabled:cursor-wait"
         >
           {isSaving ? 'Saving...' : 'Save Player'}
         </button>

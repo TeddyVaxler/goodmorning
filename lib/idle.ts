@@ -88,12 +88,12 @@ export interface BossSkin {
 }
 
 export const BOSS_SKINS: BossSkin[] = [
-  { id: 'classic', name: 'Classic', unlockAt: 0, overlay: null, overlayClass: '', overlaySize: 0, onHead: false, ringClass: 'bg-[#F5A800] border-[#1A2E35]' },
-  { id: 'shades', name: 'Too Cool', unlockAt: 10000, overlay: '🕶️', overlayClass: 'top-[30%] left-1/2 -translate-x-1/2', overlaySize: 0.38, onHead: false, ringClass: 'bg-[#7dd3fc] border-[#1A2E35]' },
-  { id: 'coffee', name: 'Caffeinated', unlockAt: 100000, overlay: '☕', overlayClass: 'bottom-[4%] right-[4%]', overlaySize: 0.30, onHead: false, ringClass: 'bg-[#c08457] border-[#1A2E35]' },
-  { id: 'party', name: 'Party Boss', unlockAt: 1000000, overlay: '🥳', overlayClass: '-top-[6%] right-[2%]', overlaySize: 0.32, onHead: true, ringClass: 'bg-[#f0abfc] border-[#1A2E35]' },
-  { id: 'crown', name: 'Royal Morning', unlockAt: 100000000, overlay: '👑', overlayClass: '-top-[14%] left-1/2 -translate-x-1/2', overlaySize: 0.34, onHead: true, ringClass: 'bg-[#fde047] border-[#a16207]' },
-  { id: 'cosmic', name: 'Cosmic Sunrise', unlockAt: 10000000000, overlay: '🌌', overlayClass: 'bottom-[2%] left-[4%]', overlaySize: 0.28, onHead: false, ringClass: 'bg-[#4c1d95] border-[#F9CB66]' },
+  { id: 'classic', name: 'Classic', unlockAt: 0, overlay: null, overlayClass: '', overlaySize: 0, onHead: false, ringClass: 'bg-marigold border-line' },
+  { id: 'shades', name: 'Too Cool', unlockAt: 10000, overlay: '🕶️', overlayClass: 'top-[30%] left-1/2 -translate-x-1/2', overlaySize: 0.38, onHead: false, ringClass: 'bg-[#7dd3fc] border-line' },
+  { id: 'coffee', name: 'Caffeinated', unlockAt: 100000, overlay: '☕', overlayClass: 'bottom-[4%] right-[4%]', overlaySize: 0.30, onHead: false, ringClass: 'bg-[#c08457] border-line' },
+  { id: 'party', name: 'Party Boss', unlockAt: 1000000, overlay: '🥳', overlayClass: '-top-[6%] right-[2%]', overlaySize: 0.32, onHead: true, ringClass: 'bg-[#f0abfc] border-line' },
+  { id: 'crown', name: 'Royal Morning', unlockAt: 100000000, overlay: '👑', overlayClass: '-top-[14%] left-1/2 -translate-x-1/2', overlaySize: 0.34, onHead: true, ringClass: 'bg-lemon border-[#a16207]' },
+  { id: 'cosmic', name: 'Cosmic Sunrise', unlockAt: 10000000000, overlay: '🌌', overlayClass: 'bottom-[2%] left-[4%]', overlaySize: 0.28, onHead: false, ringClass: 'bg-[#4c1d95] border-sun' },
 ];
 
 export const skinById = (id: string) => BOSS_SKINS.find((s) => s.id === id) ?? BOSS_SKINS[0];

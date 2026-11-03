@@ -112,8 +112,8 @@ function Boss({ spot, scale, disabled, onTap, season, isDecoy = false, isHidden 
         disabled={disabled}
         whileTap={{ scale: 0.92 }}
         aria-label={isDecoy ? 'Decoy boss' : 'Say good morning'}
-        className={`w-full h-full rounded-full border-4 overflow-hidden shadow-[4px_4px_0px_0px_#1A2E35] select-none touch-manipulation cursor-pointer disabled:cursor-wait ${
-          isDecoy ? 'bg-[#a78bfa] border-[#7f1d1d]' : 'bg-[#F5A800] border-[#1A2E35]'
+        className={`w-full h-full rounded-full border-4 overflow-hidden shadow-[4px_4px_0px_0px_rgb(var(--line))] select-none touch-manipulation cursor-pointer disabled:cursor-wait ${
+          isDecoy ? 'bg-[#a78bfa] border-[#7f1d1d]' : 'bg-marigold border-line'
         }`}
       >
         <img

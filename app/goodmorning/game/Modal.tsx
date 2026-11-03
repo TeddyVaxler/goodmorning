@@ -29,7 +29,7 @@ export default function Modal({ labelledBy, onClose, closeLabel = 'Close', size 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2E35]/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/60 p-4"
     >
       <motion.div
         role="dialog"
@@ -40,9 +40,9 @@ export default function Modal({ labelledBy, onClose, closeLabel = 'Close', size 
         exit={{ scale: 0.8, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${size === 'sm' ? 'max-w-sm' : 'max-w-md'} max-h-full overflow-y-auto overscroll-contain flex flex-col gap-4 p-5 sm:p-6 bg-white border-2 border-[#1A2E35] shadow-[8px_8px_0px_0px_#1A2E35]`}
+        className={`relative w-full ${size === 'sm' ? 'max-w-sm' : 'max-w-md'} max-h-full overflow-y-auto overscroll-contain flex flex-col gap-4 p-5 sm:p-6 bg-paper border-2 border-line shadow-[8px_8px_0px_0px_rgb(var(--line))]`}
       >
-        <button onClick={onClose} aria-label={closeLabel} className="absolute top-3 right-3 p-1 hover:text-[#006b5b] touch-manipulation">
+        <button onClick={onClose} aria-label={closeLabel} className="absolute top-3 right-3 p-1 hover:text-teal touch-manipulation">
           <X className="w-6 h-6" />
         </button>
         {children}

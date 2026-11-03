@@ -23,8 +23,8 @@ const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 const FLIP_SECONDS = 0.3; // Per tile; tiles in a row flip one after another
 
 const MARK_STYLES: Record<Mark, string> = {
-  G: 'bg-[#006b5b] border-[#006b5b] text-white',
-  Y: 'bg-[#F9CB66] border-[#F9CB66] text-[#1A2E35]',
+  G: 'bg-teal border-teal text-white',
+  Y: 'bg-sun border-sun text-ink',
   B: 'bg-gray-400 border-gray-400 text-white',
 };
 
@@ -155,28 +155,28 @@ export default function MorningWordPage() {
   const keyMarks = game && revealRow !== null ? keyboardMarks({ ...game, guesses: game.guesses.slice(0, -1), feedback: game.feedback.slice(0, -1) }) : marks;
 
   return (
-    <main className={`fixed inset-0 flex flex-col bg-[#f4f7f5] text-[#1A2E35] ${montserrat.className} overflow-hidden`}>
-      <header className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 bg-white border-b-2 border-[#1A2E35]">
+    <main className={`fixed inset-0 flex flex-col bg-page text-ink ${montserrat.className} overflow-hidden`}>
+      <header className="shrink-0 flex items-center justify-between gap-2 px-3 py-2 bg-paper border-b-2 border-line">
         <div className="flex items-center gap-1">
-          <Link href="/goodmorning" aria-label="Back" className="p-2 hover:text-[#006b5b]">
+          <Link href="/goodmorning" aria-label="Back" className="p-2 hover:text-teal">
             <ArrowLeft className="w-6 h-6" />
           </Link>
-          <button onClick={() => setModal('help')} aria-label="How to play" className="p-2 hover:text-[#006b5b]">
+          <button onClick={() => setModal('help')} aria-label="How to play" className="p-2 hover:text-teal">
             <CircleHelp className="w-6 h-6" />
           </button>
         </div>
         <h1 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tighter text-center">
-          Morning Word{game && <span className="text-[#006b5b]"> #{game.puzzleNumber}</span>}
+          Morning Word{game && <span className="text-teal"> #{game.puzzleNumber}</span>}
         </h1>
         <div className="flex items-center gap-1">
-          <button onClick={() => setModal('results')} aria-label="Stats and leaderboard" className="p-2 hover:text-[#006b5b]">
+          <button onClick={() => setModal('results')} aria-label="Stats and leaderboard" className="p-2 hover:text-teal">
             <BarChart3 className="w-6 h-6" />
           </button>
           {isReady && (
             <button
               onClick={() => setModal('profile')}
               aria-label={profile ? `Signed in as @${profile.handle}` : 'Claim your handle'}
-              className={`p-2 border-2 border-[#1A2E35] ${profile ? 'bg-white' : 'bg-[#F9CB66]'} hover:bg-[#9FD085]`}
+              className={`p-2 border-2 border-line ${profile ? 'bg-paper' : 'bg-sun'} hover:bg-leaf`}
             >
               <AtSign className="w-5 h-5" />
             </button>
@@ -192,7 +192,7 @@ export default function MorningWordPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute top-3 z-20 px-4 py-2 bg-[#1A2E35] text-white text-sm font-black uppercase tracking-wider pointer-events-none"
+              className="absolute top-3 z-20 px-4 py-2 bg-ink text-paper text-sm font-black uppercase tracking-wider pointer-events-none"
             >
               {toast}
             </motion.div>
@@ -200,7 +200,7 @@ export default function MorningWordPage() {
         </AnimatePresence>
 
         {loadError ? (
-          <div className="max-w-xs p-5 bg-white border-2 border-[#1A2E35] shadow-[4px_4px_0px_0px_#1A2E35] text-center font-bold flex flex-col gap-3">
+          <div className="max-w-xs p-5 bg-paper border-2 border-line shadow-[4px_4px_0px_0px_rgb(var(--line))] text-center font-bold flex flex-col gap-3">
             <p>{ERROR_MESSAGES[loadError]}</p>
             <PrimaryButton onClick={() => window.location.reload()}>Try Again</PrimaryButton>
           </div>
@@ -281,7 +281,7 @@ function Tile({ letter, mark, delay }: { letter: string; mark: Mark | null; dela
       animate={delay !== null ? { rotateX: [0, 90, 0] } : letter ? { scale: [1, 1.08, 1] } : {}}
       transition={delay !== null ? { duration: FLIP_SECONDS, delay } : { duration: 0.1 }}
       className={`flex items-center justify-center border-2 text-2xl sm:text-3xl font-black uppercase select-none ${
-        colored ? MARK_STYLES[mark] : letter ? 'bg-white border-[#1A2E35]' : 'bg-white border-gray-300'
+        colored ? MARK_STYLES[mark] : letter ? 'bg-paper border-line' : 'bg-paper border-gray-300'
       }`}
     >
       {letter}
@@ -319,7 +319,7 @@ function Key({ label, ariaLabel, mark, wide = false, onPress, disabled }: {
       disabled={disabled}
       aria-label={ariaLabel}
       className={`${wide ? 'flex-[1.5] max-w-[4.5rem] text-[11px]' : 'flex-1 max-w-[3.25rem] text-sm'} h-12 sm:h-14 flex items-center justify-center border-2 font-black uppercase touch-manipulation select-none transition-colors disabled:cursor-default ${
-        mark ? MARK_STYLES[mark] : 'bg-white border-[#1A2E35] hover:bg-[#fff8e6] active:bg-[#F9CB66]'
+        mark ? MARK_STYLES[mark] : 'bg-paper border-line hover:bg-cream active:bg-sun'
       }`}
     >
       {label}
@@ -331,7 +331,7 @@ function HelpModal({ onClose }: { onClose: () => void }) {
   const example = (word: string, index: number, mark: Mark) => (
     <div className="grid grid-cols-5 gap-1 w-44">
       {word.split('').map((letter, i) => (
-        <div key={i} className={`aspect-square flex items-center justify-center border-2 font-black ${i === index ? MARK_STYLES[mark] : 'bg-white border-[#1A2E35]'}`}>
+        <div key={i} className={`aspect-square flex items-center justify-center border-2 font-black ${i === index ? MARK_STYLES[mark] : 'bg-paper border-line'}`}>
           {letter}
         </div>
       ))}
@@ -404,7 +404,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
       </h2>
 
       {game?.finished && !game.solved && game.answer && (
-        <p className="text-sm font-bold">The word was <span className="font-black text-[#006b5b]">{game.answer}</span>.</p>
+        <p className="text-sm font-bold">The word was <span className="font-black text-teal">{game.answer}</span>.</p>
       )}
 
       <div className="grid grid-cols-4 gap-2 text-center">
@@ -427,7 +427,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
           <div key={i} className="flex items-center gap-2 text-xs font-black">
             <span className="w-3">{i + 1}</span>
             <div
-              className={`h-5 flex items-center justify-end px-1.5 text-white ${i === winningRow ? 'bg-[#006b5b]' : 'bg-gray-400'}`}
+              className={`h-5 flex items-center justify-end px-1.5 text-white ${i === winningRow ? 'bg-teal' : 'bg-gray-400'}`}
               style={{ width: `${Math.max(8, (count / maxCount) * 100)}%` }}
             >
               {count}
@@ -438,7 +438,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
 
       <div className="flex flex-col gap-1">
         <h3 className="text-xs font-black uppercase tracking-widest flex items-center gap-1">
-          <Trophy className="w-4 h-4 text-[#006b5b]" /> Today
+          <Trophy className="w-4 h-4 text-teal" /> Today
         </h3>
         {board === null ? (
           <p className="text-xs font-bold text-gray-500">Loading…</p>
@@ -447,7 +447,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
         ) : (
           <ol className="text-xs font-bold flex flex-col gap-0.5 max-h-40 overflow-y-auto">
             {board.map((row) => (
-              <li key={row.rank} className={`flex justify-between px-2 py-1 ${row.isMe ? 'bg-[#fff8e6] border border-[#1A2E35]' : ''}`}>
+              <li key={row.rank} className={`flex justify-between px-2 py-1 ${row.isMe ? 'bg-cream border border-line' : ''}`}>
                 <span>#{row.rank} @{row.handle}</span>
                 <span>{row.solved ? `${row.guesses}/6` : 'X/6'} · {solveTime(row.seconds)}</span>
               </li>
@@ -455,7 +455,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
           </ol>
         )}
         {!hasProfile && (
-          <button onClick={onClaimHandle} className="mt-1 text-xs font-black text-[#006b5b] underline text-left">
+          <button onClick={onClaimHandle} className="mt-1 text-xs font-black text-teal underline text-left">
             Claim a handle to get on the leaderboard →
           </button>
         )}
@@ -464,7 +464,7 @@ function ResultsModal({ game, hasProfile, onClaimHandle, onClose }: {
       {game?.finished && (
         <>
           <p className="text-xs font-bold text-center text-gray-500">
-            Next word in <span className="font-black text-[#1A2E35]">{formatDuration(secondsLeft)}</span>
+            Next word in <span className="font-black text-ink">{formatDuration(secondsLeft)}</span>
           </p>
           <PrimaryButton onClick={share}>
             <Share2 className="w-5 h-5" /> {copied ? 'Copied!' : 'Share'}
